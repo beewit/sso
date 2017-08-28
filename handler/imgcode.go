@@ -4,7 +4,9 @@ import (
 	"strconv"
 	"fmt"
 	"github.com/labstack/echo"
+	"github.com/beewit/sso/global"
 	"github.com/beewit/beekit/utils"
+	"github.com/beewit/beekit/utils/convert"
 	"net/http"
 )
 
@@ -22,5 +24,7 @@ func ImgCode(c echo.Context) error {
 	utils.NewImage(d, 100, 40).WriteTo(c.Response().Writer)
 	fmt.Println(ss)
 	c.Response().Flush()
+	code, _ := convert.ToString(d)
+	global.RD.SetAndExpire(global.ImgCode, code, 60)
 	return nil
 }

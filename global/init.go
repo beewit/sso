@@ -18,4 +18,5 @@ var (
 	Host                = fmt.Sprintf("http://%s:%s", IP, Port)
 	ImgCodeExpire int64 = 60
 	SmsCodeExpire int64 = 60
+	ImgCode             = "imgCodeRedis"
 )

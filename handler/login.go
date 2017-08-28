@@ -119,7 +119,11 @@ func RegSendSms(c echo.Context) error {
 	if !utils.CheckMobile(mobile) {
 		return utils.Error(c, "手机号码格式错误", nil)
 	}
-
+	//图形码校验
+	imgCode, _ := global.RD.GetString(global.ImgCode)
+	if imgCode != code {
+		return utils.Error(c, "图形验证码错误", nil)
+	}
 	//短信接口数量限制
 
 	//注册帐号限制
