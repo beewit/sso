@@ -8,12 +8,16 @@ import (
 	"github.com/labstack/echo"
 
 	"fmt"
+	"github.com/labstack/echo/middleware"
 )
 
 func Start() {
 	fmt.Printf("登陆授权系统启动")
 
 	e := echo.New()
+
+	e.Use(middleware.RequestID())
+
 	e.Static("/static", "static")
 	e.Static("/page", "page")
 	e.File("/", "page/login.html")
@@ -22,6 +26,8 @@ func Start() {
 	e.POST("/pass/register", handler.Register)
 	e.POST("/pass/regSendSms", handler.RegSendSms)
 	e.POST("/pass/checkRegMobile", handler.CheckRegMobile)
+
+	e.GET("/union/weibo/code", handler.WeiboCode)
 
 	e.GET("/img/code", handler.ImgCode)
 

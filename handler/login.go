@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/beewit/beekit/utils"
+	"github.com/beewit/beekit/utils/encrypt"
 	"github.com/beewit/beekit/utils/convert"
 	"github.com/beewit/sso/global"
 
@@ -23,29 +24,39 @@ func Login(c echo.Context) error {
 		return utils.Error(c, "帐号或密码不存在", nil)
 	}
 	userInfo := rows[0]
+	id, _ := convert.ToString(userInfo["id"])
 	pwd, _ := convert.ToString(userInfo["password"])
 	salt, _ := convert.ToString(userInfo["salt"])
-	if utils.Sha1Encode(password+salt) != pwd {
+	if encrypt.Sha1Encode(password+salt) != pwd {
 		return utils.Error(c, "密码错误", nil)
 	}
-	// Create token
+	iw, _ := utils.NewIdWorker(1)
+	idw, idErr := iw.NextId()
+	if idErr != nil {
+		return utils.Error(c, "ID生成器发生错误", nil)
+	}
+
+	t, err := GetToken(id + string(idw))
+
+	if err != nil {
+		return utils.Error(c, "服务器异常", nil)
+	}
+	return utils.Success(c, "操作成功", map[string]string{
+		"token": t,
+	})
+}
+
+func GetToken(secret string) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
 
-	// Set claims
 	claims := token.Claims.(jwt.MapClaims)
 	claims["name"] = "Jon Snow"
 	claims["admin"] = true
 	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
 
 	// Generate encoded token and send it as response.
-	t, err := token.SignedString([]byte("secret"))
-	if err != nil {
-		return utils.Error(c, "服务器异常", nil)
-	}
+	return token.SignedString([]byte(secret))
 
-	return utils.Success(c, "操作成功", map[string]string{
-		"token": t,
-	})
 }
 
 func Register(c echo.Context) error {
@@ -88,7 +99,7 @@ func Register(c echo.Context) error {
 	if idErr != nil {
 		return utils.Error(c, "ID生成器发生错误", nil)
 	}
-	_, err := global.DB.Insert(sql, id, mobile, utils.Sha1Encode(password+smsCode), smsCode)
+	_, err := global.DB.Insert(sql, id, mobile, encrypt.Sha1Encode(password+smsCode), smsCode)
 	if err != nil {
 		return utils.Error(c, "注册失败，"+err.Error(), nil)
 	}
@@ -96,15 +107,6 @@ func Register(c echo.Context) error {
 	global.RD.DelKey(mobile + "_sms_code")
 	return utils.Success(c, "注册成功", nil)
 }
-
-var (
-	gatewayUrl      = "http://dysmsapi.aliyuncs.com/"
-	accessKeyId     = "LTAIU8Z42KGdDq9A"
-	accessKeySecret = "5MkVtLr2HZO5iXTd8zB4p7ChOTwuwl"
-	signName        = "工蜂小智"
-	templateCode    = "SMS_83430283"
-	templateParam   = "{\"code\":\"%s\"}"
-)
 
 func RegSendSms(c echo.Context) error {
 	mobile := c.FormValue("mobile")
@@ -120,7 +122,7 @@ func RegSendSms(c echo.Context) error {
 		return utils.Error(c, "手机号码格式错误", nil)
 	}
 	//图形码校验
-	imgCode, _ := global.RD.GetString(global.ImgCode)
+	imgCode, _ := global.RD.GetString(global.IMG_CODE)
 	if imgCode != code {
 		return utils.Error(c, "图形验证码错误", nil)
 	}
@@ -132,15 +134,22 @@ func RegSendSms(c echo.Context) error {
 	}
 
 	smsCode := utils.NewLen(4)
-	templateParam = fmt.Sprintf(templateParam, smsCode)
-	smsClient := utils.NewSmsClient(gatewayUrl)
-	if result, err := smsClient.Execute(accessKeyId, accessKeySecret, mobile, signName, templateCode, templateParam); err != nil {
+	templateParam := fmt.Sprintf(global.SMS_TEMPLATE_PARAM, smsCode)
+	smsClient := utils.NewSmsClient(global.SmsGatewayUrl)
+	result, err := smsClient.Execute(
+		global.SmsAccessKeyId,
+		global.SmsAccessKeySecret,
+		mobile,
+		global.SmsSignName,
+		global.SMS_TEMPLATE_REG,
+		templateParam)
+	if err != nil {
 		fmt.Println("error:", err.Error())
 		return utils.Error(c, "发送失败"+err.Error(), nil)
 	} else {
 		resultCode := fmt.Sprintf("%s", result["Code"])
 		if resultCode == "OK" {
-			_, setStrErr := global.RD.SetAndExpire(mobile+"_sms_code", smsCode, global.SmsCodeExpire)
+			_, setStrErr := global.RD.SetAndExpire(mobile+"_sms_code", smsCode, global.SMS_CODE_EXPIRE)
 			if setStrErr != nil {
 				global.Log.Error("注册帐号验证码Redis存储错误：" + setStrErr.Error())
 			}

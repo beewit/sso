@@ -23,5 +23,16 @@
     "level": "7",
     "maxdays": "10",
     "separate": "error"
+  },
+  "sms": {
+    "gatewayUrl": "http://dysmsapi.aliyuncs.com/",
+    "accessKeyId": "LTAIU8Z42KGdDq9A",
+    "accessKeySecret": "5MkVtLr2HZO5iXTd8zB4p7ChOTwuwl",
+    "signName": "工蜂小智"
+  },
+  "weibo": {
+    "appKey": "262990023",
+    "appSecret": "d5695444fb8633812d6d2a625d5b39b8",
+    "redirectUri": "http://sso.tbqbz.com/union/weibo/code"
   }
 }

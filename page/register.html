@@ -153,7 +153,6 @@
                                     var tip = document.getElementById("mobile-tip");
                                     tip.innerHTML = data.body.msg;
                                     tip.style.display = "block";
-                                    //ZENG.msgbox.show(data.body.msg, 2);
                                 }
                             }).catch(function () {
                             ZENG.msgbox.show("服务器异常", 2);
@@ -172,11 +171,13 @@
                     if (this.login.img_code != undefined && this.login.img_code != ""
                         && this.errors.collect('img_code') == "" && this.login.mobile != ""
                         && this.login.mobile != undefined) {
-                        ZENG.msgbox.show("发送成功：" + this.login.img_code, 4);
                         h.post("/pass/regSendSms", {mobile: this.login.mobile, code: this.login.img_code})
                             .then(function (data) {
                                 if (data.body.ret == 200) {
                                     ZENG.msgbox.show(data.body.msg, 4);
+                                    setTimeout(function () {
+                                        location.href = "/"
+                                    }, 3000)
                                 } else {
                                     ZENG.msgbox.show(data.body.msg, 2);
                                 }

@@ -191,9 +191,9 @@ ZENG.msgbox.show = function (msgHtml, type, timeout, opts) {
     _s._setPosition(mBox, timeout, opts.topPosition);
 };
 ZENG.msgbox._setPosition = function (tips, timeout, topPosition) {
-    timeout = timeout || 5000;
+    timeout = timeout || 3000;
     var _s = ZENG.msgbox, bt = ZENG.dom.getScrollTop(), ch = ZENG.dom.getClientHeight(), t = Math.floor(ch / 2) - 40;
-    ZENG.dom.setStyle(tips, "top", ((document.compatMode == "BackCompat" || ZENG.userAgent.ie < 7) ? bt : 0) + ((typeof (topPosition) == "number") ? topPosition : t) + "px");
+    ZENG.dom.setStyle(tips, "top", (((document.compatMode == "BackCompat" || ZENG.userAgent.ie < 7) ? bt : 0) + ((typeof (topPosition) == "number") ? topPosition : t) - 200) + "px");
     clearTimeout(_s._timer);
     tips.firstChild.style.display = "";
     timeout && (_s._timer = setTimeout(_s.hide, timeout));
@@ -214,4 +214,4 @@ ZENG.msgbox._hide = function () {
         var _tips = _mBox.firstChild;
         ZENG.dom.setStyle(_mBox, "display", "none");
     }
-}; 
+};

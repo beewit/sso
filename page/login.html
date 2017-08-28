@@ -30,12 +30,14 @@
             <div class="loginwrap clear">
                 <div class="logininput">
                     <input type="text" name="mobile" class="loginusername" placeholder="请输入您的手机号"
+                           displayName="手机"
                            v-model="login.mobile"
                            v-validate="'required|mobile'"
                            :class="{'input': true, 'is-danger': errors.has('mobile') }"/>
                     <span v-show="errors.has('mobile')" class="help is-danger" style='display:none'>{{ errors.first('mobile') }}</span>
 
                     <input type="password" name="password" class="loginuserpasswordt loginusername" placeholder="密码"
+                           displayName="密码"
                            v-model="login.password" v-validate="'required'"
                            :class="{'input': true, 'is-danger': errors.has('password') }"/>
 
@@ -69,7 +71,10 @@
                 <h4>用第三方帐号直接登录</h4>
                 <div class="unlogin">
                     <ul>
-                        <li id="sinal"><a href="##"><i></i>微博登录</a></li>
+                        <li id="sinal">
+                            <a href="https://api.weibo.com/oauth2/authorize?client_id=262990023&response_type=code&redirect_uri=http://sso.tbqbz.com/union/weibo/code
+">
+                                <i></i>微博登录</a></li>
                         <li id="wechatl"><a href="##"><i></i>微信登录</a></li>
                         <li id="qql" style="margin-right: 0px;"><a href="##"><i></i>QQ登录</a></li>
                     </ul>
@@ -80,6 +85,8 @@
         </div>
     </div>
 </form>
+<script src="/static/js/common.js"></script>
+<script src="/static/js/js.cookie.js"></script>
 <script src="/static/js/msgbox.js"></script>
 <script src="/static/js/vue/vue.js"></script>
 <script src="/static/js/vue/vee-validate.js"></script>
@@ -87,6 +94,13 @@
 <script src="/static/js/vue/vee-validate-common.js"></script>
 <script src="/static/js/vue/vue-resource.min.js"></script>
 <script>
+
+    //设置回调url
+    var backUrl = LinkUrl.Request('backUrl') || false;
+    if (backUrl) {
+        Cookies.set('backUrl', backUrl, {expires: 7})
+    }
+
     var isMobile = {
         messages: {
             zh_CN: function (field, args) {
@@ -131,15 +145,17 @@
                         //请求地址the.login
                         h.post("/pass/login", the.login).then(function (data) {
                             if (data.body.ret == 200) {
-                                ZENG.msgbox.show("登陆成功", 1);
+                                ZENG.msgbox.show("登陆成功", 4);
+                                backUrl = Cookies.get('backUrl') || false;
+                                if (backUrl) {
+                                    location.href = backUrl;
+                                }
                             } else {
-                                alert(data.body.msg);
-
                                 ZENG.msgbox.show(data.body.msg, 1);
                             }
 
                         }).catch(function () {
-                            ZENG.msgbox.show("服务器异常", 1);
+                            ZENG.msgbox.show("服务器异常", 2);
                         });
 
 
