@@ -2,3 +2,4 @@
 2017/08/27 23:45:50 [E] [login.go:78] 注册帐号验证码Redis存储错误：redigo: nil returned
 2017/08/28 09:32:45 [E] [login.go:78] 注册帐号验证码Redis存储错误：redigo: nil returned
 2017/08/28 11:27:20 [I] [imgcode.go:27] [0 3 8 6]%!(EXTRA <nil>)
+2017/08/29 21:51:48 [E] [login.go:34] key is invalid

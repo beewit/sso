@@ -6,6 +6,7 @@ import (
 	"github.com/beewit/beekit/mysql"
 	"github.com/beewit/beekit/redis"
 	"fmt"
+	"github.com/beewit/beekit/utils/convert"
 )
 
 var (
@@ -15,20 +16,22 @@ var (
 	RD   = redis.Cache
 	IP   = CFG.Get("server.ip")
 	Port = CFG.Get("server.port")
-	Host = fmt.Sprintf("http://%s:%s", IP, Port)
+	Host = fmt.Sprintf("http://%v:%v", IP, Port)
 
-	SmsGatewayUrl      = fmt.Sprintf("%s", CFG.Get("sms.gatewayUrl"))
-	SmsAccessKeyId     = fmt.Sprintf("%s", CFG.Get("sms.accessKeyId"))
-	SmsAccessKeySecret = fmt.Sprintf("%s", CFG.Get("sms.accessKeySecret"))
-	SmsSignName        = fmt.Sprintf("%s", CFG.Get("sms.signName"))
-	WeiboAppKey        = fmt.Sprintf("%s", CFG.Get("weibo.appKey"))
-	WeiboAppSecret     = fmt.Sprintf("%s", CFG.Get("weibo.appSecret"))
-	WeiboRedirectUri   = fmt.Sprintf("%s", CFG.Get("weibo.redirectUri"))
+	SmsGatewayUrl      = convert.ToString(CFG.Get("sms.gatewayUrl"))
+	SmsAccessKeyId     = convert.ToString(CFG.Get("sms.accessKeyId"))
+	SmsAccessKeySecret = convert.ToString(CFG.Get("sms.accessKeySecret"))
+	SmsSignName        = convert.ToString(CFG.Get("sms.signName"))
+	WeiboAppKey        = convert.ToString(CFG.Get("weibo.appKey"))
+	WeiboAppSecret     = convert.ToString(CFG.Get("weibo.appSecret"))
+	WeiboRedirectUri   = convert.ToString(CFG.Get("weibo.redirectUri"))
+
+	LoginToken = func(mobile string) string { return fmt.Sprintf("%v_LOGIN_TOKEN", mobile) }
 )
 
 const (
 	SMS_TEMPLATE_REG         = "SMS_83430283"
-	SMS_TEMPLATE_PARAM       = "{\"code\":\"%s\"}"
+	SMS_TEMPLATE_PARAM       = "{\"code\":\"%v\"}"
 	IMG_CODE                 = "imgCodeRedis"
 	IMG_CODE_EXPIRE    int64 = 60
 	SMS_CODE_EXPIRE    int64 = 10 * 60

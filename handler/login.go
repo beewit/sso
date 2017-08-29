@@ -1,16 +1,16 @@
 package handler
 
 import (
-	"time"
-
 	"github.com/beewit/beekit/utils"
 	"github.com/beewit/beekit/utils/encrypt"
-	"github.com/beewit/beekit/utils/convert"
 	"github.com/beewit/sso/global"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
 	"fmt"
+	"encoding/json"
+	"github.com/pkg/errors"
+	"github.com/beewit/beekit/utils/convert"
 )
 
 func Login(c echo.Context) error {
@@ -24,38 +24,43 @@ func Login(c echo.Context) error {
 		return utils.Error(c, "帐号或密码不存在", nil)
 	}
 	userInfo := rows[0]
-	id, _ := convert.ToString(userInfo["id"])
-	pwd, _ := convert.ToString(userInfo["password"])
-	salt, _ := convert.ToString(userInfo["salt"])
+	pwd := convert.ToString(userInfo["password"])
+	salt := convert.ToString(userInfo["salt"])
 	if encrypt.Sha1Encode(password+salt) != pwd {
 		return utils.Error(c, "密码错误", nil)
 	}
-	iw, _ := utils.NewIdWorker(1)
-	idw, idErr := iw.NextId()
-	if idErr != nil {
-		return utils.Error(c, "ID生成器发生错误", nil)
-	}
 
-	t, err := GetToken(id + string(idw))
-
+	token, err := GetToken(userInfo, mobile)
 	if err != nil {
+		global.Log.Error(err.Error())
 		return utils.Error(c, "服务器异常", nil)
 	}
+
 	return utils.Success(c, "操作成功", map[string]string{
-		"token": t,
+		"token": token,
 	})
 }
 
-func GetToken(secret string) (string, error) {
+func GetToken(account map[string]interface{}, mobile string) (string, error) {
+	iw, _ := utils.NewIdWorker(1)
+	idw, idErr := iw.NextId()
+	if idErr != nil {
+		return "", errors.New("ID生成器发生错误")
+	}
+	accountMap := make(map[string]interface{})
+	accountMap["id"] = account["id"]
+	accountMap["random"] = idw
+	accStr, _ := json.Marshal(accountMap)
+
 	token := jwt.New(jwt.SigningMethodHS256)
+	tk, err := token.SignedString(accStr)
+	if err != nil {
+		return "", err
+	}
 
-	claims := token.Claims.(jwt.MapClaims)
-	claims["name"] = "Jon Snow"
-	claims["admin"] = true
-	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
-
-	// Generate encoded token and send it as response.
-	return token.SignedString([]byte(secret))
+	//Redis 12小时
+	global.RD.SetAndExpire(global.LoginToken(mobile), tk, 12*60*60)
+	return tk, nil
 
 }
 
@@ -147,7 +152,7 @@ func RegSendSms(c echo.Context) error {
 		fmt.Println("error:", err.Error())
 		return utils.Error(c, "发送失败"+err.Error(), nil)
 	} else {
-		resultCode := fmt.Sprintf("%s", result["Code"])
+		resultCode := fmt.Sprintf("%v", result["Code"])
 		if resultCode == "OK" {
 			_, setStrErr := global.RD.SetAndExpire(mobile+"_sms_code", smsCode, global.SMS_CODE_EXPIRE)
 			if setStrErr != nil {

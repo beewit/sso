@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/beewit/beekit/utils/convert"
 	"github.com/beewit/beekit/utils/enum"
+	"fmt"
 )
 
 func WeiboCode(c echo.Context) error {
@@ -24,12 +25,19 @@ func WeiboCode(c echo.Context) error {
 			return utils.RedirectAndAlert(c, "您的微博没有绑定工蜂小智帐号哦", "/")
 		}
 		userInfo := rows[0]
-		status, _ := convert.ToString(userInfo["status"])
+		status := fmt.Sprintf("%s", userInfo["status"])
+
 		if status != enum.NORMAL {
 			return utils.RedirectAndAlert(c, "该帐号已被冻结", "/")
 		}
-		//设置Cookie
-		return utils.RedirectAndAlert(c, "登陆成功", "/")
+		//设置Cookie    userInfo["mobile"]
+		//GetToken(userInfo,)
+		c.Cookie("backUrl")
+		backUrl, err := c.Cookie("backUrl")
+		if err != nil {
+			return err
+		}
+		return utils.Redirect(c, backUrl.Value)
 	}
 	return utils.RedirectAndAlert(c, "新浪微博Code获取失败", "/")
 }

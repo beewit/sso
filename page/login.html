@@ -85,6 +85,9 @@
         </div>
     </div>
 </form>
+<form id="goBackUrl" method="post" action="">
+    <input type="hidden" value="" name="token" id="token"/>
+</form>
 <script src="/static/js/common.js"></script>
 <script src="/static/js/js.cookie.js"></script>
 <script src="/static/js/msgbox.js"></script>
@@ -148,7 +151,15 @@
                                 ZENG.msgbox.show("登陆成功", 4);
                                 backUrl = Cookies.get('backUrl') || false;
                                 if (backUrl) {
-                                    location.href = backUrl;
+                                    //location.href = backUrl;
+                                    $("#token").val(data.body.token)
+                                    $("#goBackUrl").val(backUrl)
+                                    $("#goBackUrl").submit();
+
+                                } else {
+                                    setTimeout(function () {
+                                        ZENG.msgbox.show("无有效回调地址", 1);
+                                    }, 1000)
                                 }
                             } else {
                                 ZENG.msgbox.show(data.body.msg, 1);
