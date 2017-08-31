@@ -161,9 +161,15 @@ func GetToken(account map[string]interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
+	alt := "account_login_token" + convert.ToString(account["id"])
+	//清除该帐号下的其他Token
+	oldToken, err2 := global.RD.GetString(alt)
+	if err2 == nil {
+		global.RD.DelKey(oldToken)
+	}
 	//Redis 12小时
 	global.RD.SetAndExpire(tk, accStr, 12*60*60)
+	global.RD.SetAndExpire(alt, tk, 12*60*60)
 	return tk, nil
 
 }
