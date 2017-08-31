@@ -11,6 +11,8 @@ import (
 	"encoding/json"
 	"github.com/pkg/errors"
 	"github.com/beewit/beekit/utils/convert"
+	"github.com/beewit/beekit/utils/enum"
+	"github.com/beewit/beekit/log"
 )
 
 func Login(c echo.Context) error {
@@ -18,8 +20,8 @@ func Login(c echo.Context) error {
 	mobile := c.FormValue("mobile")
 	password := c.FormValue("password")
 	// auth
-	sql := `SELECT id, password, mobile, nickname,salt FROM account WHERE mobile = ? AND status = 1`
-	rows, _ := global.DB.Query(sql, mobile)
+	sql := `SELECT id, password, mobile, nickname,salt FROM account WHERE mobile = ? AND status = ?`
+	rows, _ := global.DB.Query(sql, mobile, enum.NORMAL)
 	if len(rows) != 1 {
 		return utils.Error(c, "帐号或密码不存在", nil)
 	}
@@ -59,7 +61,7 @@ func GetToken(account map[string]interface{}, mobile string) (string, error) {
 	}
 
 	//Redis 12小时
-	global.RD.SetAndExpire(global.LoginToken(mobile), tk, 12*60*60)
+	global.RD.SetAndExpire(tk, accStr, 12*60*60)
 	return tk, nil
 
 }
@@ -98,13 +100,13 @@ func Register(c echo.Context) error {
 		return utils.Error(c, "短信验证码错误", nil)
 	}
 
-	sql := "INSERT INTO account (id,mobile,password,salt,status) VALUES (?,?,?,?,1)"
+	sql := "INSERT INTO account (id,mobile,password,salt,status) VALUES (?,?,?,?,?)"
 	iw, _ := utils.NewIdWorker(1)
 	id, idErr := iw.NextId()
 	if idErr != nil {
 		return utils.Error(c, "ID生成器发生错误", nil)
 	}
-	_, err := global.DB.Insert(sql, id, mobile, encrypt.Sha1Encode(password+smsCode), smsCode)
+	_, err := global.DB.Insert(sql, id, mobile, encrypt.Sha1Encode(password+smsCode), smsCode, enum.NORMAL)
 	if err != nil {
 		return utils.Error(c, "注册失败，"+err.Error(), nil)
 	}
@@ -131,7 +133,7 @@ func RegSendSms(c echo.Context) error {
 	if imgCode != code {
 		return utils.Error(c, "图形验证码错误", nil)
 	}
-	//短信接口数量限制
+	//短信接口数量限制或预警
 
 	//注册帐号限制
 	if CheckMobile(mobile) {
@@ -190,4 +192,45 @@ func CheckMobile(mobile string) bool {
 		return true
 	}
 	return false
+}
+
+func CheckLoginToken(c echo.Context) error {
+	token := c.FormValue("token")
+	flog, err := CheckToken(token)
+	if err != nil {
+		log.Logger.Error(err.Error())
+		return utils.Error(c, "检查token异常，"+err.Error(), false)
+	}
+	if !flog {
+		return utils.Error(c, "无效token", false)
+	}
+	return utils.Success(c, "有效token", true)
+}
+
+func CheckToken(token string) (bool, error) {
+	if token == "" {
+		return false, nil
+	}
+	tv, err := global.RD.GetString(token)
+	if err != nil {
+		global.Log.Error(err.Error())
+		return false, err
+	}
+	if tv == "" {
+		return false, nil
+	}
+	var m map[string]interface{}
+	err = json.Unmarshal([]byte(tv), &m)
+	if err != nil {
+		global.Log.Error(err.Error())
+		return false, err
+	}
+	id := convert.ToString(m["id"])
+	sql := `SELECT id, password, mobile, nickname,salt FROM account WHERE id=? AND status = ?`
+	rows, _ := global.DB.Query(sql, id, enum.NORMAL)
+	if len(rows) != 1 {
+		global.Log.Warning("ID:%s，登陆帐号异常", id)
+		return false, nil
+	}
+	return true, nil
 }
