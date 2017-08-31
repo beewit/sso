@@ -32,7 +32,6 @@ func WeiboCode(c echo.Context) error {
 		userInfo := rows[0]
 
 		status := convert.ToString(userInfo["status"])
-		mobile := convert.ToString(userInfo["mobile"])
 		userInfo["id"] = userInfo["account_id"]
 		if status != enum.NORMAL {
 			return utils.RedirectAndAlert(c, "该帐号已被冻结", "/")
@@ -43,7 +42,7 @@ func WeiboCode(c echo.Context) error {
 		if err != nil {
 			return utils.RedirectAndAlert(c, "登陆成功可无回调地址", "/")
 		}
-		token, err := GetToken(userInfo, mobile)
+		token, err := GetToken(userInfo)
 		if err != nil {
 			global.Log.Error(err.Error())
 			return utils.Error(c, "服务器异常", nil)

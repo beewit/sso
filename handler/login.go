@@ -32,7 +32,7 @@ func Login(c echo.Context) error {
 		return utils.Error(c, "密码错误", nil)
 	}
 
-	token, err := GetToken(userInfo, mobile)
+	token, err := GetToken(userInfo)
 	if err != nil {
 		global.Log.Error(err.Error())
 		return utils.Error(c, "服务器异常", nil)
@@ -41,29 +41,6 @@ func Login(c echo.Context) error {
 	return utils.Success(c, "操作成功", map[string]string{
 		"token": token,
 	})
-}
-
-func GetToken(account map[string]interface{}, mobile string) (string, error) {
-	iw, _ := utils.NewIdWorker(1)
-	idw, idErr := iw.NextId()
-	if idErr != nil {
-		return "", errors.New("ID生成器发生错误")
-	}
-	accountMap := make(map[string]interface{})
-	accountMap["id"] = account["id"]
-	accountMap["random"] = idw
-	accStr, _ := json.Marshal(accountMap)
-
-	token := jwt.New(jwt.SigningMethodHS256)
-	tk, err := token.SignedString(accStr)
-	if err != nil {
-		return "", err
-	}
-
-	//Redis 12小时
-	global.RD.SetAndExpire(tk, accStr, 12*60*60)
-	return tk, nil
-
 }
 
 func Register(c echo.Context) error {
@@ -168,6 +145,29 @@ func RegSendSms(c echo.Context) error {
 
 }
 
+func GetToken(account map[string]interface{}) (string, error) {
+	iw, _ := utils.NewIdWorker(1)
+	idw, idErr := iw.NextId()
+	if idErr != nil {
+		return "", errors.New("ID生成器发生错误")
+	}
+	accountMap := make(map[string]interface{})
+	accountMap["id"] = account["id"]
+	accountMap["random"] = idw
+	accStr, _ := json.Marshal(accountMap)
+
+	token := jwt.New(jwt.SigningMethodHS256)
+	tk, err := token.SignedString(accStr)
+	if err != nil {
+		return "", err
+	}
+
+	//Redis 12小时
+	global.RD.SetAndExpire(tk, accStr, 12*60*60)
+	return tk, nil
+
+}
+
 func CheckRegMobile(c echo.Context) error {
 	mobile := c.FormValue("mobile")
 	if mobile == "" || !utils.CheckMobile(mobile) {
@@ -196,41 +196,41 @@ func CheckMobile(mobile string) bool {
 
 func CheckLoginToken(c echo.Context) error {
 	token := c.FormValue("token")
-	flog, err := CheckToken(token)
+	m, err := CheckToken(token)
 	if err != nil {
 		log.Logger.Error(err.Error())
-		return utils.Error(c, "检查token异常，"+err.Error(), false)
+		return utils.Error(c, "检查token异常，"+err.Error(), nil)
 	}
-	if !flog {
-		return utils.Error(c, "无效token", false)
+	if m == nil {
+		return utils.Error(c, "无效token", nil)
 	}
-	return utils.Success(c, "有效token", true)
+	return utils.Success(c, "有效token", m)
 }
 
-func CheckToken(token string) (bool, error) {
+func CheckToken(token string) (map[string]interface{}, error) {
 	if token == "" {
-		return false, nil
+		return nil, nil
 	}
 	tv, err := global.RD.GetString(token)
 	if err != nil {
 		global.Log.Error(err.Error())
-		return false, err
+		return nil, err
 	}
 	if tv == "" {
-		return false, nil
+		return nil, nil
 	}
 	var m map[string]interface{}
 	err = json.Unmarshal([]byte(tv), &m)
 	if err != nil {
 		global.Log.Error(err.Error())
-		return false, err
+		return nil, err
 	}
 	id := convert.ToString(m["id"])
-	sql := `SELECT id, password, mobile, nickname,salt FROM account WHERE id=? AND status = ?`
+	sql := `SELECT id, mobile, nickname, photo, gender, member_type_id, member_type_name, member_expir_time FROM account WHERE id=? AND status = ? LIMIT 1`
 	rows, _ := global.DB.Query(sql, id, enum.NORMAL)
 	if len(rows) != 1 {
 		global.Log.Warning("ID:%s，登陆帐号异常", id)
-		return false, nil
+		return nil, nil
 	}
-	return true, nil
+	return rows[0], nil
 }

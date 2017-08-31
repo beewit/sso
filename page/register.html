@@ -103,6 +103,8 @@
         </div>
     </div>
 </form>
+<script src="/static/js/common.js"></script>
+<script src="/static/js/js.cookie.js"></script>
 <script src="/static/js/msgbox.js"></script>
 <script src="/static/js/vue/vue.js"></script>
 <script src="/static/js/vue/vee-validate.js"></script>
@@ -110,6 +112,12 @@
 <script src="/static/js/vue/vee-validate-common.js"></script>
 <script src="/static/js/vue/vue-resource.min.js"></script>
 <script>
+    //设置回调url
+    var backUrl = LinkUrl.Request('backUrl') || false;
+    if (backUrl) {
+        Cookies.set('backUrl', backUrl, {expires: 7})
+    }
+
     var isMobile = {
         messages: {
             zh_CN: function (field, args) {
@@ -210,6 +218,9 @@
                             h.post("/pass/register", the.login).then(function (data) {
                                 if (data.body.ret == 200) {
                                     ZENG.msgbox.show(data.body.msg, 4);
+                                    setTimeout(function () {
+                                        location.href = "/"
+                                    }, 1000)
                                 } else {
                                     ZENG.msgbox.show(data.body.msg, 1);
                                 }
