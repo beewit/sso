@@ -151,10 +151,14 @@
                                 ZENG.msgbox.show("登陆成功", 4);
                                 backUrl = Cookies.get('backUrl') || false;
                                 if (backUrl) {
-                                    //location.href = backUrl;
-                                    $("#token").val(data.body.token)
-                                    $("#goBackUrl").val(backUrl)
-                                    $("#goBackUrl").submit();
+                                    location.href = backUrl.indexOf("?") > -1 ? backUrl + '&token=' + data.body.data.token : backUrl + "?token=" + data.body.data.token;
+//                                    $("#token").val(data.body.data.token)
+//                                    $("#goBackUrl").val(backUrl)
+//                                    $("#goBackUrl").submit();
+
+//                                    document.getElementById("token").value = data.body.data.token;
+//                                    document.getElementById("goBackUrl").setAttribute("action", backUrl)
+//                                    document.getElementById("goBackUrl").submit()
 
                                 } else {
                                     setTimeout(function () {
