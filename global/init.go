@@ -25,6 +25,9 @@ var (
 	WeiboAppKey        = convert.ToString(CFG.Get("weibo.appKey"))
 	WeiboAppSecret     = convert.ToString(CFG.Get("weibo.appSecret"))
 	WeiboRedirectUri   = convert.ToString(CFG.Get("weibo.redirectUri"))
+	WechatAppId        = convert.ToString(CFG.Get("wechat.appId"))
+	WechatAppSecret    = convert.ToString(CFG.Get("wechat.appSecret"))
+	WechatRedirectUri  = convert.ToString(CFG.Get("wechat.redirectUri"))
 
 	LoginToken = func(mobile string) string { return fmt.Sprintf("%v_LOGIN_TOKEN", mobile) }
 )

@@ -34,5 +34,10 @@
     "appKey": "262990023",
     "appSecret": "d5695444fb8633812d6d2a625d5b39b8",
     "redirectUri": "http://sso.tbqbz.com/union/weibo/code"
+  },
+  "wechat": {
+    "appId": "wx4568fe2fe1a71e4f",
+    "appSecret": "d5a6ea7a025385f916f84be80e77ecad",
+    "redirectUri": "http://sso.tbqbz.com/union/weixin/code"
   }
 }

@@ -6,6 +6,10 @@ import (
 	"github.com/beewit/sso/global"
 	"encoding/json"
 	"github.com/beewit/beekit/utils"
+	"github.com/beewit/sso/handler"
+	"github.com/labstack/echo"
+	"net/http/httptest"
+	"strings"
 )
 
 func TestLogin(t *testing.T) {
@@ -18,4 +22,20 @@ func TestLogin(t *testing.T) {
 	var rp utils.ResultParam
 	json.Unmarshal(b[:], &rp)
 	println("牛逼了")
+}
+
+func TestString2Map(t *testing.T) {
+	str := `{"errcode":40029,"errmsg":"invalid code, hints: [ req_id: 0C0mGA0824th31 ]"}`
+	b := strings.Contains(str, "errcode")
+
+	t.Log(b)
+}
+
+func TestWechatLogin(t *testing.T) {
+	userJSON := `{"code" :"081u2W2g1xQWZw0Ggu1g1fVW2g1u2W2c"}`
+	e := echo.New()
+	req := httptest.NewRequest("POST", "/union/weixin/code?code=081ENjg92WLp2P0hL7d924ang92ENjgS", strings.NewReader(userJSON))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec).(echo.Context)
+	t.Log(handler.WechatCode(c))
 }

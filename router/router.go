@@ -31,6 +31,7 @@ func Start() {
 	e.POST("/pass/checkToken", handler.CheckLoginToken)
 
 	e.GET("/union/weibo/code", handler.WeiboCode)
+	e.GET("/union/wechat/code", handler.WechatCode)
 
 	e.GET("/img/code", handler.ImgCode)
 
