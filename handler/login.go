@@ -13,6 +13,7 @@ import (
 	"github.com/beewit/beekit/utils/convert"
 	"github.com/beewit/beekit/utils/enum"
 	"github.com/beewit/beekit/log"
+	"time"
 )
 
 func Login(c echo.Context) error {
@@ -77,13 +78,13 @@ func Register(c echo.Context) error {
 		return utils.Error(c, "短信验证码错误", nil)
 	}
 
-	sql := "INSERT INTO account (id,mobile,password,salt,status) VALUES (?,?,?,?,?)"
+	sql := "INSERT INTO account (id,mobile,password,salt,status,ct_time,ct_ip) VALUES (?,?,?,?,?,?,?)"
 	iw, _ := utils.NewIdWorker(1)
 	id, idErr := iw.NextId()
 	if idErr != nil {
 		return utils.Error(c, "ID生成器发生错误", nil)
 	}
-	_, err := global.DB.Insert(sql, id, mobile, encrypt.Sha1Encode(password+smsCode), smsCode, enum.NORMAL)
+	_, err := global.DB.Insert(sql, id, mobile, encrypt.Sha1Encode(password+smsCode), smsCode, enum.NORMAL, time.Now().Format("2006-01-02 15:04:05"), c.RealIP())
 	if err != nil {
 		return utils.Error(c, "注册失败，"+err.Error(), nil)
 	}
