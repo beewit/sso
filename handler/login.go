@@ -107,7 +107,7 @@ func RegSendSms(c echo.Context) error {
 		return utils.Error(c, "手机号码格式错误", nil)
 	}
 	//图形码校验
-	imgCode, _ := global.RD.GetString(global.IMG_CODE)
+	imgCode :=global.Session(c).GetValue(global.IMG_CODE) // global.RD.GetString(global.IMG_CODE)
 	if imgCode != code {
 		return utils.Error(c, "图形验证码错误", nil)
 	}

@@ -17,10 +17,13 @@ func ImgCode(c echo.Context) error {
 		d[v] %= 10
 		code += strconv.FormatInt(int64(d[v]), 32)
 	}
+	global.Session(c).AddValue(global.IMG_CODE, code).Saves()
 	c.Set("Content-Type", "image/png")
 	c.Response().WriteHeader(http.StatusOK)
 	utils.NewImage(d, 100, 40).WriteTo(c.Response().Writer)
+
 	c.Response().Flush()
-	global.RD.SetAndExpire(global.IMG_CODE, code, 60)
+
+	//global.RD.SetAndExpire(global.IMG_CODE, code, 60)
 	return nil
 }

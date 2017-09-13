@@ -11,6 +11,8 @@ import (
 	"fmt"
 
 	"github.com/labstack/echo/middleware"
+	"github.com/gorilla/sessions"
+	"github.com/labstack/echo-contrib/session"
 )
 
 func Start() {
@@ -19,6 +21,7 @@ func Start() {
 	e := echo.New()
 
 	e.Use(middleware.RequestID())
+	e.Use(session.Middleware(sessions.NewCookieStore([]byte("secret"))))
 
 	e.Static("/static", "static")
 	e.Static("/page", "page")
