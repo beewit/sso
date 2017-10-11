@@ -27,6 +27,7 @@ func Start() {
 	e.Static("/page", "page")
 	e.File("/", "page/login.html")
 
+	e.POST("/pass/deleteToken", handler.DeleteToken)
 	e.POST("/pass/login", handler.Login)
 	e.POST("/pass/register", handler.Register)
 	e.POST("/pass/regSendSms", handler.RegSendSms)

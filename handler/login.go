@@ -14,6 +14,7 @@ import (
 	"github.com/beewit/beekit/utils/enum"
 	"github.com/beewit/beekit/log"
 	"time"
+	"strings"
 )
 
 func Login(c echo.Context) error {
@@ -74,7 +75,7 @@ func Register(c echo.Context) error {
 	if setStrErr != nil {
 		global.Log.Error("注册帐号验证码Redis存储错误：" + setStrErr.Error())
 	}
-	if rdSmsCode != smsCode {
+	if strings.ToLower(rdSmsCode) != strings.ToLower(smsCode) {
 		return utils.Error(c, "短信验证码错误", nil)
 	}
 
@@ -107,7 +108,7 @@ func RegSendSms(c echo.Context) error {
 		return utils.Error(c, "手机号码格式错误", nil)
 	}
 	//图形码校验
-	imgCode :=global.Session(c).GetValue(global.IMG_CODE) // global.RD.GetString(global.IMG_CODE)
+	imgCode := global.Session(c).GetValue(global.IMG_CODE) // global.RD.GetString(global.IMG_CODE)
 	if imgCode != code {
 		return utils.Error(c, "图形验证码错误", nil)
 	}
@@ -233,11 +234,20 @@ func CheckToken(token string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	id := convert.ToString(m["id"])
-	sql := `SELECT id, mobile, nickname, photo, gender, member_type_id, member_type_name, member_expir_time FROM account WHERE id=? AND status = ? LIMIT 1`
+	sql := `SELECT id, mobile, nickname, photo, gender, member_expir_time FROM account WHERE id=? AND status = ? LIMIT 1`
 	rows, _ := global.DB.Query(sql, id, enum.NORMAL)
 	if len(rows) != 1 {
-		global.Log.Warning("ID:%s，登陆帐号异常", id)
+		global.Log.Warning("ID:%v，登陆帐号异常", id)
 		return nil, nil
 	}
 	return rows[0], nil
+}
+
+func DeleteToken(c echo.Context) error {
+	token := c.FormValue("token")
+	if token == "" {
+		return utils.ErrorNull(c, "token错误")
+	}
+	global.RD.DelKey(token)
+	return utils.SuccessNullMsg(c, "退出成功")
 }
