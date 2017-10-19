@@ -5,16 +5,16 @@ import (
 	"github.com/beewit/beekit/utils/encrypt"
 	"github.com/beewit/sso/global"
 
-	"github.com/dgrijalva/jwt-go"
-	"github.com/labstack/echo"
-	"fmt"
 	"encoding/json"
-	"github.com/pkg/errors"
+	"fmt"
+	"github.com/beewit/beekit/log"
 	"github.com/beewit/beekit/utils/convert"
 	"github.com/beewit/beekit/utils/enum"
-	"github.com/beewit/beekit/log"
-	"time"
+	"github.com/dgrijalva/jwt-go"
+	"github.com/labstack/echo"
+	"github.com/pkg/errors"
 	"strings"
+	"time"
 )
 
 func Login(c echo.Context) error {
