@@ -1,15 +1,15 @@
 package main
 
 import (
-	"github.com/beewit/sso/global"
-	"github.com/beewit/beekit/utils/convert"
+	"github.com/beewit/beekit/utils"
 )
 
 func main() {
-	println("测试")
-	sql := `SELECT * FROM account_auths LEFT JOIN account ON account.id=account_auths.account_id `
-	rows, _ := global.DB.Query(sql )
-
-	rows[0]["id"] = rows[0]["account_id"]
-	println(convert.ToString(rows[0]["id"]))
+	iw, _ := utils.NewIdWorker(1)
+	for i := 0; i < 20; i++ {
+		go func() {
+			id, _:= iw.NextId()
+			println(id)
+		}()
+	}
 }

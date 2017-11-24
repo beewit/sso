@@ -7,7 +7,7 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=0.95, user-scalable=no"/>
     <link rel="icon" type="image/png" href="/static/img/favicon.png">
-    <title>统一注册认证 - 工蜂数据</title>
+    <title>忘记密码 - 工蜂数据</title>
     <link rel="stylesheet" type="text/css" href="/static/css/style.css"/>
     <link rel="stylesheet" type="text/css" href="/static/css/msgbox.css"/>
     <style type="text/css">
@@ -66,34 +66,23 @@
                     </div>
                     <span v-show="errors.has('sms_code')" class="help is-danger"
                           style='display:none'>{{ errors.first('sms_code') }}</span>
-                    <input type="password" name="password" class="loginusername" placeholder="密码"
+                    <input type="password" name="password" class="loginusername" placeholder="新密码"
                            displayName="密码"
                            v-model="login.password"
                            v-validate="'required|min:6|max:16|alpha_num'"
                            :class="{'input': true, 'is-danger': errors.has('password') }"/>
                     <span v-show="errors.has('password')" class="help is-danger"
                           style='display:none'>{{ errors.first('password') }}</span>
-                    <!--<input type="password" name="password2" class="loginusername" placeholder="确认密码"-->
-                    <!--v-model="login.password2"-->
-                    <!--v-validate="'required|alpha_dash'"-->
-                    <!--:class="{'input': true, 'is-danger': errors.has('password2') }"/>-->
-                    <!--<span v-show="errors.has('password2')" class="help is-danger"-->
-                    <!--style='display:none'>{{ errors.first('password2') }}</span>-->
                 </div>
                 <div class="loginbtn">
                     <div class="loginsubmit">
-                        <input type="submit" value="注册"/>
+                        <input type="submit" value="确认修改密码"/>
                         <div class="loginsubmiting">
                             <div class="loginsubmiting_inner">
                             </div>
                         </div>
                     </div>
-                    <div class="logcheckbox fl">
-                        <label>
-                            <input id="bcdl" type="checkbox" checked="true"/>
-                            <a>注册代表同意用户协议</a>
-                        </label>
-                    </div>
+                    <div style="height: 30px;"></div>
                     <div class="clear"></div>
                 </div>
             </div>
@@ -157,6 +146,8 @@
     Vue.http.options.headers = {
         'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
     };
+    var regphone = /1\d{10}$/;
+    var reg = new RegExp(regphone);
     var v = new Vue({
         el: '.form',
         data: {
@@ -165,12 +156,12 @@
         methods: {
             checkRegMobile: function () {
                 var h = this.$http;
-                if (this.login.mobile != "" && this.login.mobile != undefined) {
+                if (this.login.mobile != "" && this.login.mobile != undefined && reg.test(this.login.mobile)) {
                     h.post("/pass/checkRegMobile", {mobile: this.login.mobile})
                             .then(function (data) {
-                                if (data.body.ret != 200) {
+                                if (data.body.ret == 200) {
                                     var tip = document.getElementById("mobile-tip");
-                                    tip.innerHTML = data.body.msg;
+                                    tip.innerHTML = '该手机号码不存在';
                                     tip.style.display = "block";
                                 }
                             }).catch(function () {
@@ -192,7 +183,7 @@
                 if (this.login.img_code != undefined && this.login.img_code != ""
                         && this.errors.collect('img_code') == "" && this.login.mobile != ""
                         && this.login.mobile != undefined) {
-                    h.post("/pass/regSendSms", {mobile: this.login.mobile, code: this.login.img_code, type: "reg"})
+                    h.post("/pass/regSendSms", {mobile: this.login.mobile, code: this.login.img_code})
                             .then(function (data) {
                                 if (data.body.ret == 200) {
                                     the.countdown();
@@ -225,7 +216,7 @@
                     if (f) {
                         // 这里才是你的表单数据
                         //请求地址the.login
-                        h.post("/pass/register", the.login).then(function (data) {
+                        h.post("/pass/forget", the.login).then(function (data) {
                             if (data.body.ret == 200) {
                                 ZENG.msgbox.show(data.body.msg, 4);
                                 setTimeout(function () {

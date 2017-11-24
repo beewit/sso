@@ -15,3 +15,7 @@
 
 zxbit2011
 config.json
+debug
+.glide/
+.idea/
+.vscode

@@ -39,3 +39,7 @@ func TestWechatLogin(t *testing.T) {
 	c := e.NewContext(req, rec).(echo.Context)
 	t.Log(handler.WechatCode(c))
 }
+
+func TestRandStr(t *testing.T) {
+	println(handler.GetRand())
+}

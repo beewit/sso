@@ -30,6 +30,7 @@ func Start() {
 	e.POST("/pass/deleteToken", handler.DeleteToken)
 	e.POST("/pass/login", handler.Login)
 	e.POST("/pass/register", handler.Register)
+	e.POST("/pass/forget", handler.Forget)
 	e.POST("/pass/regSendSms", handler.RegSendSms)
 	e.POST("/pass/checkRegMobile", handler.CheckRegMobile)
 	e.POST("/pass/checkToken", handler.CheckLoginToken)

@@ -12,9 +12,9 @@ import (
 	"github.com/beewit/beekit/utils/enum"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
-	"github.com/pkg/errors"
 	"strings"
 	"time"
+	"math/rand"
 )
 
 func Login(c echo.Context) error {
@@ -45,6 +45,44 @@ func Login(c echo.Context) error {
 	})
 }
 
+func Forget(c echo.Context) error {
+	mobile := c.FormValue("mobile")
+	smsCode := c.FormValue("sms_code")
+	password := c.FormValue("password")
+	if mobile == "" {
+		return utils.Error(c, "待发送短信的手机号码不能为空", nil)
+	}
+	if smsCode == "" {
+		return utils.Error(c, "短信验证码不能为空", nil)
+	}
+	if password == "" {
+		return utils.Error(c, "新密码不能为空", nil)
+	}
+	if len(password) > 16 {
+		return utils.Error(c, "新密码最长不能超过20位", nil)
+	}
+	if !utils.CheckRegexp(password, "^[0-9a-z]{6,16}$") {
+		return utils.Error(c, "新密码仅包含字母数字字符", nil)
+	}
+	if !utils.CheckMobile(mobile) {
+		return utils.Error(c, "手机号码格式错误", nil)
+	}
+	if !CheckMobile(mobile) {
+		return utils.Error(c, "手机号码不存在", nil)
+	}
+	rdSmsCode, _ := global.RD.GetString(mobile + "_sms_code")
+	if strings.ToLower(rdSmsCode) != strings.ToLower(smsCode) {
+		return utils.Error(c, "短信验证码错误", nil)
+	}
+	sql := "UPDATE account SET password=?,salt=? WHERE mobile=?"
+	_, err := global.DB.Update(sql, encrypt.Sha1Encode(password+smsCode), smsCode, mobile)
+	if err != nil {
+		return utils.Error(c, "注册失败，"+err.Error(), nil)
+	}
+	global.RD.DelKey(mobile + "_sms_code")
+	return utils.Success(c, "修改密码成功", nil)
+}
+
 func Register(c echo.Context) error {
 	mobile := c.FormValue("mobile")
 	smsCode := c.FormValue("sms_code")
@@ -59,11 +97,11 @@ func Register(c echo.Context) error {
 	if password == "" {
 		return utils.Error(c, "登陆密码不能为空", nil)
 	}
-	if len(password) > 20 {
-		return utils.Error(c, "登陆密码最长不能超过20位", nil)
+	if len(password) > 16 {
+		return utils.Error(c, "登陆密码最长不能超过16位", nil)
 	}
-	if utils.CheckRegexp(password, "/^[0-9A-Z_-]*$/i") {
-		return utils.Error(c, "登陆密码仅包含字母数字字符，包括破折号、下划线", nil)
+	if !utils.CheckRegexp(password, "^[0-9a-z]{6,16}$") {
+		return utils.Error(c, "登陆密码仅包含字母数字字符", nil)
 	}
 	if !utils.CheckMobile(mobile) {
 		return utils.Error(c, "手机号码格式错误", nil)
@@ -80,12 +118,7 @@ func Register(c echo.Context) error {
 	}
 
 	sql := "INSERT INTO account (id,mobile,password,salt,status,ct_time,ct_ip) VALUES (?,?,?,?,?,?,?)"
-	iw, _ := utils.NewIdWorker(1)
-	id, idErr := iw.NextId()
-	if idErr != nil {
-		return utils.Error(c, "ID生成器发生错误", nil)
-	}
-	_, err := global.DB.Insert(sql, id, mobile, encrypt.Sha1Encode(password+smsCode), smsCode, enum.NORMAL, time.Now().Format("2006-01-02 15:04:05"), c.RealIP())
+	_, err := global.DB.Insert(sql, utils.ID(), mobile, encrypt.Sha1Encode(password+smsCode), smsCode, enum.NORMAL, time.Now().Format("2006-01-02 15:04:05"), c.RealIP())
 	if err != nil {
 		return utils.Error(c, "注册失败，"+err.Error(), nil)
 	}
@@ -93,10 +126,14 @@ func Register(c echo.Context) error {
 	global.RD.DelKey(mobile + "_sms_code")
 	return utils.Success(c, "注册成功", nil)
 }
-
+func GetRand() string {
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return fmt.Sprintf("%04v", rnd.Int31n(10000))
+}
 func RegSendSms(c echo.Context) error {
 	mobile := c.FormValue("mobile")
 	code := c.FormValue("code")
+	t := c.FormValue("type")
 	if mobile == "" {
 		return utils.Error(c, "待发送短信的手机号码不能为空", nil)
 	}
@@ -113,13 +150,13 @@ func RegSendSms(c echo.Context) error {
 		return utils.Error(c, "图形验证码错误", nil)
 	}
 	//短信接口数量限制或预警
-
-	//注册帐号限制
-	if CheckMobile(mobile) {
-		return utils.Error(c, "手机号码已注册", nil)
+	if t == "reg" {
+		//注册帐号限制
+		if CheckMobile(mobile) {
+			return utils.Error(c, "手机号码已注册", nil)
+		}
 	}
-
-	smsCode := utils.NewLen(4)
+	smsCode := GetRand()
 	templateParam := fmt.Sprintf(global.SMS_TEMPLATE_PARAM, smsCode)
 	smsClient := utils.NewSmsClient(global.SmsGatewayUrl)
 	result, err := smsClient.Execute(
@@ -148,14 +185,9 @@ func RegSendSms(c echo.Context) error {
 }
 
 func GetToken(account map[string]interface{}) (string, error) {
-	iw, _ := utils.NewIdWorker(1)
-	idw, idErr := iw.NextId()
-	if idErr != nil {
-		return "", errors.New("ID生成器发生错误")
-	}
 	accountMap := make(map[string]interface{})
 	accountMap["id"] = account["id"]
-	accountMap["random"] = idw
+	accountMap["random"] = utils.ID()
 	accStr, _ := json.Marshal(accountMap)
 
 	token := jwt.New(jwt.SigningMethodHS256)
@@ -234,7 +266,7 @@ func CheckToken(token string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	id := convert.ToString(m["id"])
-	sql := `SELECT id, mobile, nickname, photo, gender, member_expir_time FROM account WHERE id=? AND status = ? LIMIT 1`
+	sql := `SELECT id, mobile, nickname, photo, gender FROM account WHERE id=? AND status = ? LIMIT 1`
 	rows, _ := global.DB.Query(sql, id, enum.NORMAL)
 	if len(rows) != 1 {
 		global.Log.Warning("ID:%v，登陆帐号异常", id)

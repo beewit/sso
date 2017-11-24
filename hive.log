@@ -1,0 +1,1 @@
+2017/11/24 11:38:07 [E] [login.go:114] 注册帐号验证码Redis存储错误：redigo: nil returned
