@@ -19,3 +19,4 @@ debug
 .glide/
 .idea/
 .vscode
+*.log
