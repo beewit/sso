@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
+	"encoding/json"
 )
 
 var (
@@ -31,6 +32,10 @@ var (
 	WechatAppId        = convert.ToString(CFG.Get("wechat.appId"))
 	WechatAppSecret    = convert.ToString(CFG.Get("wechat.appSecret"))
 	WechatRedirectUri  = convert.ToString(CFG.Get("wechat.redirectUri"))
+
+
+	WechatAPPAppId        = convert.ToString(CFG.Get("wechat_app.appId"))
+	WechatAPPAppSecret    = convert.ToString(CFG.Get("wechat_app.appSecret"))
 
 	LoginToken = func(mobile string) string { return fmt.Sprintf("%v_LOGIN_TOKEN", mobile) }
 
@@ -75,4 +80,32 @@ func (us *USession) AddValue(key, value string) *USession {
 
 func (us *USession) GetValue(key string) string {
 	return convert.ToString(us.Values[key])
+}
+
+
+
+type Account struct {
+	ID       int64  `json:"id"`
+	Nickname string `json:"nickname"`
+	Photo    string `json:"photo"`
+	Mobile   string `json:"mobile"`
+	Status   string `json:"status"`
+}
+
+func ToByteAccount(b []byte) *Account {
+	var rp = new(Account)
+	err := json.Unmarshal(b[:], &rp)
+	if err != nil {
+		Log.Error(err.Error())
+		return nil
+	}
+	return rp
+}
+
+func ToInterfaceAccount(m interface{}) *Account {
+	b := convert.ToInterfaceByte(m)
+	if b == nil {
+		return nil
+	}
+	return ToByteAccount(b)
 }

@@ -19,8 +19,8 @@ func Start() {
 	fmt.Printf("登陆授权系统启动")
 
 	e := echo.New()
-
-	e.Use(middleware.RequestID())
+	e.Use(middleware.Gzip())
+	e.Use(middleware.Recover())
 	e.Use(session.Middleware(sessions.NewCookieStore([]byte("secret"))))
 
 	e.Static("/static", "static")
@@ -37,7 +37,8 @@ func Start() {
 
 	e.GET("/union/weibo/code", handler.WeiboCode)
 	e.GET("/union/wechat/code", handler.WechatCode)
-
+	e.POST("/union/login", handler.GetUnionLoginApi)
+	e.POST("/union/bind", handler.UnionBindApi, handler.Filter)
 	e.GET("/img/code", handler.ImgCode)
 
 	utils.Open(global.Host)
