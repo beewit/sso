@@ -10,7 +10,6 @@ import (
 
 	"fmt"
 
-	"github.com/labstack/echo/middleware"
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
 )
@@ -19,8 +18,6 @@ func Start() {
 	fmt.Printf("登陆授权系统启动")
 
 	e := echo.New()
-	e.Use(middleware.Gzip())
-	e.Use(middleware.Recover())
 	e.Use(session.Middleware(sessions.NewCookieStore([]byte("secret"))))
 
 	e.Static("/static", "static")
