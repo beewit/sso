@@ -50,7 +50,7 @@ func WechatCode(c echo.Context) error {
 }
 
 func commonLogin(unionID, t string, c echo.Context) error {
-	token, err := getAccountAuthTokenByType(unionID, t)
+	token, err := getAccountAuthTokenByType(c, unionID, t)
 	if err != nil {
 		return utils.RedirectAndAlert(c, err.Error(), "/")
 	}
@@ -132,6 +132,12 @@ func UnionBindApi(c echo.Context) error {
 			global.Log.Info("修改头像个人信息成功")
 		}
 	}
+
+	//记录登录日志
+	go func() {
+		global.DB.InsertMap("account_action_logs", utils.ActionLogsMap(c, enum.UNION_ACCOUNT_BIND, t, acc.ID))
+	}()
+
 	return utils.SuccessNull(c, "绑定成功")
 }
 
@@ -150,7 +156,7 @@ func geWeiboLoginToken(c echo.Context) error {
 	uid := c.FormValue("uid")
 	accessToken := c.FormValue("accessToken")
 	wb, _ := getWeibo(uid, accessToken)
-	token, err := getAccountAuthTokenByType(uid, enum.WEIBO)
+	token, err := getAccountAuthTokenByType(c, uid, enum.WEIBO)
 	if err != nil {
 		return utils.Error(c, err.Error(), wb)
 	}
@@ -166,7 +172,7 @@ func getWechatLoginToken(c echo.Context) error {
 	if err != nil {
 		return utils.Error(c, err.Error(), wt)
 	}
-	token, err := getAccountAuthTokenByType(wt.UnionID, enum.WECHAT)
+	token, err := getAccountAuthTokenByType(c, wt.UnionID, enum.WECHAT)
 	if err != nil {
 		return utils.Error(c, err.Error(), wt)
 	}
@@ -177,7 +183,7 @@ func getWechatLoginToken(c echo.Context) error {
 
 }
 
-func getAccountAuthTokenByType(unionID, t string) (token string, err error) {
+func getAccountAuthTokenByType(c echo.Context, unionID, t string) (token string, err error) {
 	userInfo, err := getAccountAuth(unionID, t)
 	if err != nil {
 		return
@@ -189,6 +195,12 @@ func getAccountAuthTokenByType(unionID, t string) (token string, err error) {
 		return
 	}
 	token, err = GetToken(userInfo)
+
+	//记录登录日志
+	go func() {
+		global.DB.InsertMap("account_action_logs", utils.ActionLogsMap(c, enum.UNION_ACCOUNT_LOGIN, t, convert.MustInt64(userInfo["account_id"])))
+	}()
+
 	return
 }
 

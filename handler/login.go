@@ -40,6 +40,11 @@ func Login(c echo.Context) error {
 		return utils.Error(c, "服务器异常", nil)
 	}
 
+	//记录登录日志
+	go func() {
+		global.DB.InsertMap("account_action_logs", utils.ActionLogs(c, enum.ACTION_LOGIN, convert.MustInt64(userInfo["id"])))
+	}()
+
 	return utils.Success(c, "操作成功", map[string]string{
 		"token": token,
 	})
@@ -74,12 +79,22 @@ func Forget(c echo.Context) error {
 	if strings.ToLower(rdSmsCode) != strings.ToLower(smsCode) {
 		return utils.Error(c, "短信验证码错误", nil)
 	}
+	userInfo := GetAccountByMobile(mobile)
+	if userInfo == nil {
+		return utils.Error(c, "该手机用户不存在", nil)
+	}
 	sql := "UPDATE account SET password=?,salt=? WHERE mobile=?"
 	_, err := global.DB.Update(sql, encrypt.Sha1Encode(password+smsCode), smsCode, mobile)
 	if err != nil {
-		return utils.Error(c, "注册失败，"+err.Error(), nil)
+		return utils.Error(c, "修改密码失败，"+err.Error(), nil)
 	}
 	global.RD.DelKey(mobile + "_sms_code")
+
+	//记录登录日志
+	go func() {
+		global.DB.InsertMap("account_action_logs", utils.ActionLogs(c, enum.ACTION_FORGET, convert.MustInt64(userInfo["id"])))
+	}()
+
 	return utils.Success(c, "修改密码成功", nil)
 }
 
@@ -116,14 +131,20 @@ func Register(c echo.Context) error {
 	if strings.ToLower(rdSmsCode) != strings.ToLower(smsCode) {
 		return utils.Error(c, "短信验证码错误", nil)
 	}
-
+	id := utils.ID()
 	sql := "INSERT INTO account (id,mobile,password,salt,status,ct_time,ct_ip) VALUES (?,?,?,?,?,?,?)"
-	_, err := global.DB.Insert(sql, utils.ID(), mobile, encrypt.Sha1Encode(password+smsCode), smsCode, enum.NORMAL, time.Now().Format("2006-01-02 15:04:05"), c.RealIP())
+	_, err := global.DB.Insert(sql, id, mobile, encrypt.Sha1Encode(password+smsCode), smsCode, enum.NORMAL, time.Now().Format("2006-01-02 15:04:05"), c.RealIP())
 	if err != nil {
 		return utils.Error(c, "注册失败，"+err.Error(), nil)
 	}
 
 	global.RD.DelKey(mobile + "_sms_code")
+
+	//记录登录日志
+	go func() {
+		global.DB.InsertMap("account_action_logs", utils.ActionLogs(c, enum.ACTION_REGISTER, id))
+	}()
+
 	return utils.Success(c, "注册成功", nil)
 }
 func GetRand() string {
@@ -232,6 +253,21 @@ func CheckMobile(mobile string) bool {
 		return true
 	}
 	return false
+}
+
+func GetAccountByMobile(mobile string) map[string]interface{} {
+	if mobile == "" {
+		return nil
+	}
+	sql := `SELECT * FROM account WHERE mobile = ? LIMIT 1 `
+	rows, err := global.DB.Query(sql, mobile)
+	if err != nil {
+		return nil
+	}
+	if len(rows) != 1 {
+		return nil
+	}
+	return rows[0]
 }
 
 func CheckLoginToken(c echo.Context) error {
