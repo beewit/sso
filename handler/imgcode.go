@@ -21,7 +21,6 @@ func ImgCode(c echo.Context) error {
 	c.Set("Content-Type", "image/png")
 	c.Response().WriteHeader(http.StatusOK)
 	utils.NewImage(d, 100, 40).WriteTo(c.Response().Writer)
-
 	c.Response().Flush()
 
 	//global.RD.SetAndExpire(global.IMG_CODE, code, 60)

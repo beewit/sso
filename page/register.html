@@ -79,6 +79,17 @@
                     <!--:class="{'input': true, 'is-danger': errors.has('password2') }"/>-->
                     <!--<span v-show="errors.has('password2')" class="help is-danger"-->
                     <!--style='display:none'>{{ errors.first('password2') }}</span>-->
+                    <div id="share-div" style="display: none;">
+                        <input type="text" name="shareMobile" class="loginusername" placeholder="填写邀请者手机号"
+                               displayName="手机"
+                               v-model="login.shareMobile"
+                               v-validate="'mobile'"
+                               :class="{'input': true, 'is-danger': errors.has('shareMobile') }"
+                               @keyup="checkRegShareMobile"
+                        />
+                        <span id="shareMobile-tip" v-show="errors.has('shareMobile')" class="help is-danger"
+                              style='display:none'>{{ errors.first('shareMobile') }}</span>
+                    </div>
                 </div>
                 <div class="loginbtn">
                     <div class="loginsubmit">
@@ -168,6 +179,14 @@
             login: {}
         },
         methods: {
+            onLoad: function () {
+                this.$http.post("/pass/getShareAccount")
+                        .then(function (data) {
+                            if (data.body.ret == 200 && !data.body.data) {
+                                document.getElementById("share-div").style.display = "block";
+                            }
+                        });
+            },
             checkRegMobile: function () {
                 var h = this.$http;
                 if (this.login.mobile != "" && this.login.mobile != undefined) {
@@ -176,6 +195,21 @@
                                 if (data.body.ret != 200) {
                                     var tip = document.getElementById("mobile-tip");
                                     tip.innerHTML = data.body.msg;
+                                    tip.style.display = "block";
+                                }
+                            }).catch(function () {
+                        ZENG.msgbox.show("服务器异常", 2);
+                    });
+                }
+            },
+            checkRegShareMobile: function () {
+                var h = this.$http;
+                if (this.login.shareMobile != "" && this.login.shareMobile != undefined) {
+                    h.post("/pass/checkRegMobile", {mobile: this.login.shareMobile})
+                            .then(function (data) {
+                                if (data.body.ret == 200) {
+                                    var tip = document.getElementById("shareMobile-tip");
+                                    tip.innerHTML = "邀请者手机号码未注册账号";
                                     tip.style.display = "block";
                                 }
                             }).catch(function () {
@@ -268,6 +302,7 @@
             }
         }
     });
+    v.onLoad();
 </script>
 </body>
 </html>

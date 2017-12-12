@@ -102,6 +102,9 @@ func Register(c echo.Context) error {
 	mobile := c.FormValue("mobile")
 	smsCode := c.FormValue("sms_code")
 	password := c.FormValue("password")
+	shareMobile := c.FormValue("shareMobile")
+	var shareAccountId int64
+	var shareAccMap map[string]interface{}
 
 	if mobile == "" {
 		return utils.Error(c, "待发送短信的手机号码不能为空", nil)
@@ -124,6 +127,12 @@ func Register(c echo.Context) error {
 	if CheckMobile(mobile) {
 		return utils.Error(c, "手机号码已注册", nil)
 	}
+	if shareMobile != "" {
+		shareAccMap = GetAccountByMobile(shareMobile)
+		if shareAccMap == nil {
+			return utils.Error(c, "邀请者手机号码未注册账号", nil)
+		}
+	}
 	rdSmsCode, setStrErr := global.RD.GetString(mobile + "_sms_code")
 	if setStrErr != nil {
 		global.Log.Error("注册帐号验证码Redis存储错误：" + setStrErr.Error())
@@ -132,8 +141,20 @@ func Register(c echo.Context) error {
 		return utils.Error(c, "短信验证码错误", nil)
 	}
 	id := utils.ID()
-	sql := "INSERT INTO account (id,mobile,password,salt,status,ct_time,ct_ip) VALUES (?,?,?,?,?,?,?)"
-	_, err := global.DB.Insert(sql, id, mobile, encrypt.Sha1Encode(password+smsCode), smsCode, enum.NORMAL, time.Now().Format("2006-01-02 15:04:05"), c.RealIP())
+	//判断ip是否存在邀请关系
+	shareIPAccMap := getShareAccount(c)
+	if shareIPAccMap == nil {
+		//如果没有邀请关系，判断填写邀请者手机号是否是有效账号
+		if shareAccMap != nil {
+			shareAccountId = convert.MustInt64(shareAccMap["id"])
+		}
+	} else {
+		shareAccountId = convert.MustInt64(shareIPAccMap["account_id"])
+	}
+	//添加邀请者id
+	sql := "INSERT INTO account (id,mobile,password,salt,status,ct_time,ct_ip,share_account_id) VALUES (?,?,?,?,?,?,?,?)"
+	_, err := global.DB.Insert(sql, id, mobile, encrypt.Sha1Encode(password+smsCode), smsCode, enum.NORMAL,
+		time.Now().Format("2006-01-02 15:04:05"), c.RealIP(), shareAccountId)
 	if err != nil {
 		return utils.Error(c, "注册失败，"+err.Error(), nil)
 	}
@@ -147,10 +168,12 @@ func Register(c echo.Context) error {
 
 	return utils.Success(c, "注册成功", nil)
 }
+
 func GetRand() string {
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return fmt.Sprintf("%04v", rnd.Int31n(10000))
 }
+
 func RegSendSms(c echo.Context) error {
 	mobile := c.FormValue("mobile")
 	code := c.FormValue("code")
@@ -196,6 +219,7 @@ func RegSendSms(c echo.Context) error {
 			_, setStrErr := global.RD.SetAndExpire(mobile+"_sms_code", smsCode, global.SMS_CODE_EXPIRE)
 			if setStrErr != nil {
 				global.Log.Error("注册帐号验证码Redis存储错误：" + setStrErr.Error())
+				return utils.Error(c, "短信发送失败", nil)
 			}
 			return utils.Success(c, "短信发送成功", nil)
 		} else {
@@ -222,9 +246,9 @@ func GetToken(account map[string]interface{}) (string, error) {
 	if err2 == nil {
 		global.RD.DelKey(oldToken)
 	}
-	//Redis 12小时
-	global.RD.SetAndExpire(tk, accStr, 12*60*60)
-	global.RD.SetAndExpire(alt, tk, 12*60*60)
+	//Redis 7天
+	global.RD.SetAndExpire(tk, accStr, 7*12*60*60)
+	global.RD.SetAndExpire(alt, tk, 7*12*60*60)
 	return tk, nil
 
 }
@@ -275,12 +299,12 @@ func CheckLoginToken(c echo.Context) error {
 	m, err := CheckToken(token)
 	if err != nil {
 		log.Logger.Error(err.Error())
-		return utils.Error(c, "检查token异常，"+err.Error(), nil)
+		return utils.AuthFail(c, "登录已失效")
 	}
 	if m == nil {
-		return utils.Error(c, "无效token", nil)
+		return utils.AuthFail(c, "登录已失效")
 	}
-	return utils.Success(c, "有效token", m)
+	return utils.Success(c, "登录成功", m)
 }
 
 func CheckToken(token string) (map[string]interface{}, error) {
@@ -308,6 +332,11 @@ func CheckToken(token string) (map[string]interface{}, error) {
 		global.Log.Warning("ID:%v，登陆帐号异常", id)
 		return nil, nil
 	}
+	//更新登录token时间
+	alt := "account_login_token" + id
+	global.RD.SetAndExpire(token, tv, 7*12*60*60)
+	global.RD.SetAndExpire(alt, token, 7*12*60*60)
+
 	return rows[0], nil
 }
 
@@ -318,4 +347,17 @@ func DeleteToken(c echo.Context) error {
 	}
 	global.RD.DelKey(token)
 	return utils.SuccessNullMsg(c, "退出成功")
+}
+
+func GetShareAccount(c echo.Context) error {
+	return utils.SuccessNullMsg(c, getShareAccount(c) != nil)
+}
+
+func getShareAccount(c echo.Context) map[string]interface{} {
+	sql := "SELECT * FROM download_access_log WHERE ip=? ORDER BY ct_time DESC LIMIT 1"
+	rows, _ := global.DB.Query(sql, c.RealIP())
+	if len(rows) > 0 {
+		return rows[0]
+	}
+	return nil
 }

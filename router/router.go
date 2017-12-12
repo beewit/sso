@@ -31,6 +31,7 @@ func Start() {
 	e.POST("/pass/regSendSms", handler.RegSendSms)
 	e.POST("/pass/checkRegMobile", handler.CheckRegMobile)
 	e.POST("/pass/checkToken", handler.CheckLoginToken)
+	e.POST("/pass/getShareAccount", handler.GetShareAccount)
 
 	e.GET("/union/weibo/code", handler.WeiboCode)
 	e.GET("/union/wechat/code", handler.WechatCode)
