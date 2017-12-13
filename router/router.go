@@ -37,6 +37,7 @@ func Start() {
 	e.GET("/union/wechat/code", handler.WechatCode)
 	e.POST("/union/login", handler.GetUnionLoginApi)
 	e.POST("/union/bind", handler.UnionBindApi, handler.Filter)
+	e.POST("/union/cancel", handler.CancelUnion, handler.Filter)
 	e.GET("/img/code", handler.ImgCode)
 
 	utils.Open(global.Host)

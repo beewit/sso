@@ -67,3 +67,17 @@ func Filter(next echo.HandlerFunc) echo.HandlerFunc {
 		return next(c)
 	}
 }
+
+func GetAccount(c echo.Context) (acc *global.Account, err error) {
+	itf := c.Get("account")
+	if itf == nil {
+		err = utils.AuthFailNull(c)
+		return
+	}
+	acc = global.ToInterfaceAccount(itf)
+	if acc == nil {
+		err = utils.AuthFailNull(c)
+		return
+	}
+	return
+}

@@ -121,17 +121,17 @@ func UnionBindApi(c echo.Context) error {
 	err := saveAccountAuth(m)
 	if err != nil {
 		global.Log.Error(err.Error())
-		return utils.ErrorNull(c, "绑定失败")
+		return utils.ErrorNull(c, err.Error())
 	}
 	//如果没有头像，则更新头像
-	if acc.Photo == "" || acc.Nickname == "" {
-		err = updateAccInfo(acc.ID, convert.ToString(m["nickname"]), convert.ToString(m["photo"]), gender)
-		if err != nil {
-			global.Log.Error("修改头像个人信息失败")
-		} else {
-			global.Log.Info("修改头像个人信息成功")
-		}
+	//if acc.Photo == "" || acc.Nickname == "" {
+	err = updateAccInfo(acc.ID, convert.ToString(m["nickname"]), convert.ToString(m["photo"]), gender)
+	if err != nil {
+		global.Log.Error("修改头像个人信息失败")
+	} else {
+		global.Log.Info("修改头像个人信息成功")
 	}
+	//}
 
 	//记录登录日志
 	go func() {
@@ -255,8 +255,8 @@ func getWechat(code string) (wt wechat.Wechat, err error) {
 
 func saveAccountAuth(m map[string]interface{}) (err error) {
 	m["ip"] = utils.GetIp()
-	t := convert.ToString(m["type"])
-	unionID := convert.ToString(m["unionID"])
+	//t := convert.ToString(m["type"])
+	//unionID := convert.ToString(m["unionID"])
 	_, err = getAccountAuth(convert.ToString(m["unionID"]), convert.ToString(m["type"]))
 	if err != nil {
 		//新增项
@@ -264,11 +264,15 @@ func saveAccountAuth(m map[string]interface{}) (err error) {
 		m["ct_time"] = utils.CurrentTime()
 		m["ut_time"] = m["ct_time"]
 		_, err = global.DB.InsertMap("account_auths", m)
+		if err != nil {
+			err = errors.New("绑定账号失败")
+		}
 		return
 	} else {
 		//修改项
-		sql := "UPDATE account_auths SET nickname=?,photo=?,openid_pulic=?,openid=?,unionID=?,ut_time=? WHERE account_id=? AND type=? "
-		_, err = global.DB.Update(sql, m["nickname"], m["photo"], m["openid_pulic"], m["openid"], unionID, utils.CurrentTime(), m["account_id"], t)
+		//sql := "UPDATE account_auths SET nickname=?,photo=?,openid_pulic=?,openid=?,unionID=?,ut_time=? WHERE account_id=? AND type=? "
+		//_, err = global.DB.Update(sql, m["nickname"], m["photo"], m["openid_pulic"], m["openid"], unionID, utils.CurrentTime(), m["account_id"], t)
+		err = errors.New("已绑定过其他账号，请取消绑定后进行绑定")
 	}
 	return
 }
@@ -277,4 +281,19 @@ func updateAccInfo(accId int64, nickname, photo, gender string) (err error) {
 	sql := "UPDATE account SET nickname=?,photo=?,gender=? WHERE id=?"
 	_, err = global.DB.Update(sql, nickname, photo, gender, accId)
 	return
+}
+
+func CancelUnion(c echo.Context) error {
+	acc, err := GetAccount(c)
+	if err != nil {
+		return err
+	}
+	t := c.FormValue("type")
+	unionID := c.FormValue("unionID")
+	sql := "DELETE FROM account_auths WHERE account_id=? AND type=? AND unionID=?"
+	_, err = global.DB.Delete(sql, acc.ID, t, unionID)
+	if err != nil {
+		return utils.ErrorNull(c, "取消绑定失败")
+	}
+	return utils.SuccessNull(c, "取消绑定成功")
 }
