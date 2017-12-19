@@ -326,7 +326,7 @@ func CheckToken(token string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	id := convert.ToString(m["id"])
-	sql := `SELECT id, mobile, nickname, photo, gender FROM account WHERE id=? AND status = ? LIMIT 1`
+	sql := "SELECT * FROM v_account WHERE id=? AND status = ? LIMIT 1"
 	rows, _ := global.DB.Query(sql, id, enum.NORMAL)
 	if len(rows) != 1 {
 		global.Log.Warning("ID:%v，登陆帐号异常", id)
