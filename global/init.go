@@ -1,16 +1,17 @@
 package global
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/beewit/beekit/conf"
 	"github.com/beewit/beekit/log"
 	"github.com/beewit/beekit/mysql"
 	"github.com/beewit/beekit/redis"
-	"fmt"
 	"github.com/beewit/beekit/utils/convert"
-	"github.com/labstack/echo"
+	"github.com/beewit/wechat/mini"
 	"github.com/gorilla/sessions"
+	"github.com/labstack/echo"
 	"github.com/labstack/echo-contrib/session"
-	"encoding/json"
 )
 
 var (
@@ -33,21 +34,28 @@ var (
 	WechatAppSecret    = convert.ToString(CFG.Get("wechat.appSecret"))
 	WechatRedirectUri  = convert.ToString(CFG.Get("wechat.redirectUri"))
 
+	WechatAPPAppId     = convert.ToString(CFG.Get("wechat_app.appId"))
+	WechatAPPAppSecret = convert.ToString(CFG.Get("wechat_app.appSecret"))
 
-	WechatAPPAppId        = convert.ToString(CFG.Get("wechat_app.appId"))
-	WechatAPPAppSecret    = convert.ToString(CFG.Get("wechat_app.appSecret"))
+	WechatMiniAppConf = &wechatMiniAppConf{
+		AppID:     convert.ToString(CFG.Get("wechat_mini_app.appId")),
+		AppSecret: convert.ToString(CFG.Get("wechat_mini_app.appSecret")),
+	}
 
 	LoginToken = func(mobile string) string { return fmt.Sprintf("%v_LOGIN_TOKEN", mobile) }
 
 	Session = func(c echo.Context) *USession { return getSession(c) }
+
+	MiniWx = mini.NewWx(WechatMiniAppConf.AppID, WechatMiniAppConf.AppSecret)
 )
 
 const (
-	SMS_TEMPLATE_REG         = "SMS_83430283"
-	SMS_TEMPLATE_PARAM       = "{\"code\":\"%v\"}"
-	IMG_CODE                 = "imgCodeRedis"
-	IMG_CODE_EXPIRE    int64 = 60
-	SMS_CODE_EXPIRE    int64 = 10 * 60
+	SMS_TEMPLATE_REG              = "SMS_83430283"
+	SMS_TEMPLATE_PARAM            = "{\"code\":\"%v\"}"
+	IMG_CODE                      = "imgCodeRedis"
+	IMG_CODE_EXPIRE         int64 = 60
+	SMS_CODE_EXPIRE         int64 = 10 * 60
+	MINI_APP_SESSION_EXPIRE int64 = 2 * 60 * 60
 )
 
 func getSession(c echo.Context) *USession {
@@ -82,7 +90,10 @@ func (us *USession) GetValue(key string) string {
 	return convert.ToString(us.Values[key])
 }
 
-
+type wechatMiniAppConf struct {
+	AppID     string
+	AppSecret string
+}
 
 type Account struct {
 	ID       int64  `json:"id"`

@@ -1,15 +1,18 @@
 package main
 
 import (
-	"testing"
-	"github.com/beewit/beekit/utils/uhttp"
-	"github.com/beewit/sso/global"
 	"encoding/json"
 	"github.com/beewit/beekit/utils"
+	"github.com/beewit/beekit/utils/uhttp"
+	"github.com/beewit/sso/global"
 	"github.com/beewit/sso/handler"
 	"github.com/labstack/echo"
+	"github.com/stretchr/testify/assert"
+	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
+	"testing"
 )
 
 func TestLogin(t *testing.T) {
@@ -42,4 +45,39 @@ func TestWechatLogin(t *testing.T) {
 
 func TestRandStr(t *testing.T) {
 	println(handler.GetRand())
+}
+
+func TestBindOrRegisterWechatMiniApi(t *testing.T) {
+	e := echo.New()
+	f := url.Values{}
+	f.Set("mobile", "18223277005")
+	f.Set("smsCode", "5694")
+	f.Set("userinfo", `{"nickName":"承诺，一时的华丽","gender":1,"language":"zh_CN","city":"Shapingba","province":"Chongqing","country":"China","avatarUrl":"https://wx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKw8ictgYcqf6uklrSAup13EoCQ2SyfASGwOkOicAFibBz7LVgyPm7DoMPDhcqzNZzgXsJWt3r1l9gxQ/0"}`)
+	f.Set("session_id", `{"openid":"123456","session_key","0000000","unionid":"oWYCdv-DoLpnOHjx3gnPSIA3tvaU"}`)
+	f.Set("pwd", "123456")
+	req := httptest.NewRequest(echo.POST, "/", strings.NewReader(f.Encode()))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	// 断言
+	if assert.NoError(t, handler.BindOrRegisterWechatMiniApi(c)) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		t.Error(rec.Body.String())
+	}
+}
+
+func TestGetWechatMiniUnionID(t *testing.T) {
+	e := echo.New()
+	f := url.Values{}
+	f.Set("code", "013djHpA0ZqHRe2c0rrA0amIpA0djHpx")
+	req := httptest.NewRequest(echo.POST, "/", strings.NewReader(f.Encode()))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	// 断言
+	if assert.NoError(t, handler.WechatMiniUnionIDLogin(c)) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		t.Error(rec.Body.String())
+	}
 }

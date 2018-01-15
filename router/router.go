@@ -23,6 +23,7 @@ func Start() {
 	e.Static("/static", "static")
 	e.Static("/page", "page")
 	e.File("/", "page/login.html")
+	e.File("/.well-known/pki-validation/fileauth.txt", "fileauth.txt")
 
 	e.POST("/pass/deleteToken", handler.DeleteToken)
 	e.POST("/pass/login", handler.Login)
@@ -39,6 +40,10 @@ func Start() {
 	e.POST("/union/bind", handler.UnionBindApi, handler.Filter)
 	e.POST("/union/cancel", handler.CancelUnion, handler.Filter)
 	e.GET("/img/code", handler.ImgCode)
+
+	e.GET("/union/mini/app/login", handler.WechatMiniUnionIDLogin)
+	e.GET("/union/mini/app/bind", handler.BindOrRegisterWechatMiniApi)
+	e.GET("/union/mini/app/check/session", handler.CheckMiniAppSessionId)
 
 	utils.Open(global.Host)
 	port := ":" + convert.ToString(global.Port)

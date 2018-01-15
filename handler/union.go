@@ -3,16 +3,16 @@ package handler
 import (
 	//	"fmt"
 
+	"fmt"
 	"github.com/beewit/beekit/utils"
 	"github.com/beewit/beekit/utils/convert"
 	"github.com/beewit/beekit/utils/enum"
-	"github.com/beewit/beekit/utils/union/weibo"
 	"github.com/beewit/beekit/utils/union/wechat"
+	"github.com/beewit/beekit/utils/union/weibo"
 	"github.com/beewit/sso/global"
 	"github.com/labstack/echo"
-	"strings"
 	"github.com/pkg/errors"
-	"fmt"
+	"strings"
 )
 
 func WeiboCode(c echo.Context) error {
@@ -50,7 +50,7 @@ func WechatCode(c echo.Context) error {
 }
 
 func commonLogin(unionID, t string, c echo.Context) error {
-	token, err := getAccountAuthTokenByType(c, unionID, t)
+	token, err := GetAccountAuthTokenByType(c, unionID, t)
 	if err != nil {
 		return utils.RedirectAndAlert(c, err.Error(), "/")
 	}
@@ -114,6 +114,8 @@ func UnionBindApi(c echo.Context) error {
 		} else if wt.Sex == 2 {
 			gender = "女"
 		}
+	} else if t == enum.WECHAT_MINI {
+		//微信小程序绑定，并获取token
 
 	} else {
 		return utils.ErrorNull(c, fmt.Sprintf("无该类型【%s】第三方登录绑定接口", t))
@@ -156,7 +158,7 @@ func geWeiboLoginToken(c echo.Context) error {
 	uid := c.FormValue("uid")
 	accessToken := c.FormValue("accessToken")
 	wb, _ := getWeibo(uid, accessToken)
-	token, err := getAccountAuthTokenByType(c, uid, enum.WEIBO)
+	token, err := GetAccountAuthTokenByType(c, uid, enum.WEIBO)
 	if err != nil {
 		return utils.Error(c, err.Error(), wb)
 	}
@@ -172,7 +174,7 @@ func getWechatLoginToken(c echo.Context) error {
 	if err != nil {
 		return utils.Error(c, err.Error(), wt)
 	}
-	token, err := getAccountAuthTokenByType(c, wt.UnionID, enum.WECHAT)
+	token, err := GetAccountAuthTokenByType(c, wt.UnionID, enum.WECHAT)
 	if err != nil {
 		return utils.Error(c, err.Error(), wt)
 	}
@@ -180,11 +182,10 @@ func getWechatLoginToken(c echo.Context) error {
 		"token": token,
 		"info":  wt,
 	})
-
 }
 
-func getAccountAuthTokenByType(c echo.Context, unionID, t string) (token string, err error) {
-	userInfo, err := getAccountAuth(unionID, t)
+func GetAccountAuthTokenByType(c echo.Context, unionID, t string) (token string, err error) {
+	userInfo, err := GetAccountAuth(unionID, t)
 	if err != nil {
 		return
 	}
@@ -204,7 +205,7 @@ func getAccountAuthTokenByType(c echo.Context, unionID, t string) (token string,
 	return
 }
 
-func getAccountAuth(unionID, t string) (row map[string]interface{}, err error) {
+func GetAccountAuth(unionID, t string) (row map[string]interface{}, err error) {
 	sql := `SELECT account_id,status,mobile FROM account_auths LEFT JOIN account ON account.id=account_auths.account_id WHERE unionID=? AND type=?`
 	rows, _ := global.DB.Query(sql, unionID, t)
 	if len(rows) != 1 {
@@ -257,7 +258,7 @@ func saveAccountAuth(m map[string]interface{}) (err error) {
 	m["ip"] = utils.GetIp()
 	//t := convert.ToString(m["type"])
 	//unionID := convert.ToString(m["unionID"])
-	_, err = getAccountAuth(convert.ToString(m["unionID"]), convert.ToString(m["type"]))
+	_, err = GetAccountAuth(convert.ToString(m["unionID"]), convert.ToString(m["type"]))
 	if err != nil {
 		//新增项
 		m["id"] = utils.ID()

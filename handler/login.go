@@ -4,6 +4,7 @@ import (
 	"github.com/beewit/beekit/utils"
 	"github.com/beewit/beekit/utils/encrypt"
 	"github.com/beewit/sso/global"
+	"github.com/beewit/wechat/mini"
 
 	"encoding/json"
 	"fmt"
@@ -12,9 +13,9 @@ import (
 	"github.com/beewit/beekit/utils/enum"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
+	"math/rand"
 	"strings"
 	"time"
-	"math/rand"
 )
 
 func Login(c echo.Context) error {
@@ -360,4 +361,145 @@ func getShareAccount(c echo.Context) map[string]interface{} {
 		return rows[0]
 	}
 	return nil
+}
+
+func WechatMiniUnionIDLogin(c echo.Context) error {
+	code := c.FormValue("code")
+	if code == "" {
+		return utils.ErrorNull(c, "获取用户凭证失败！")
+	}
+	ws, err := global.MiniWx.GetWxSessionKey(code)
+	if err != nil {
+		return utils.ErrorNull(c, "获取用户登录信息失败！")
+	}
+	if ws.ErrCode != 0 {
+		return utils.ErrorNull(c, ws.ErrMsg)
+	}
+	wsStr := convert.ToObjStr(ws)
+	global.Log.Info(wsStr)
+	//存储redis记录
+	mini_app_session_id := "mini_app_session_" + code
+	_, err = global.RD.SetAndExpire(mini_app_session_id, wsStr, global.MINI_APP_SESSION_EXPIRE)
+	if err != nil {
+		return utils.ErrorNull(c, "获取用户信息失败")
+	}
+	auth, _ := GetAccountAuth(ws.Unionid, enum.WECHAT)
+	if auth != nil {
+		token, err := GetAccountAuthTokenByType(c, ws.Unionid, enum.WECHAT)
+		if err != nil {
+			return utils.ErrorNull(c, err.Error())
+		}
+		userinfo, err := CheckToken(token)
+		if err != nil {
+			return utils.ErrorNull(c, "获取用户信息失败")
+		} else {
+			return utils.Success(c, "登录成功", map[string]interface{}{
+				"token":               token,
+				"userinfo":            userinfo,
+				"mini_app_session_id": mini_app_session_id,
+			})
+		}
+	}
+	return utils.Success(c, "获取mini_app_session_id成功", map[string]string{
+		"mini_app_session_id": mini_app_session_id,
+	})
+}
+
+//【小程序】绑定或注册账号并登录
+func BindOrRegisterWechatMiniApi(c echo.Context) error {
+	mobile := c.FormValue("mobile")
+	password := c.FormValue("pwd")
+	smsCode := c.FormValue("smsCode")
+	userinfo := c.FormValue("userinfo")
+	miniAppSessionId := c.FormValue("miniAppSessionId")
+	if !utils.CheckMobile(mobile) {
+		return utils.ErrorNull(c, "手机号码格式错误")
+	}
+	if smsCode == "" {
+		return utils.ErrorNull(c, "短信验证码不能为空")
+	}
+	rdSmsCode, setStrErr := global.RD.GetString(mobile + "_sms_code")
+	if setStrErr != nil {
+		global.Log.Error("注册帐号验证码Redis存储错误：" + setStrErr.Error())
+	}
+	if strings.ToLower(rdSmsCode) != strings.ToLower(smsCode) {
+		return utils.ErrorNull(c, "短信验证码错误")
+	}
+	wsStr, err := global.RD.GetString(miniAppSessionId)
+	if err != nil {
+		return utils.ErrorNull(c, "获取用户登录标识失败")
+	}
+	var ws *mini.WxSesstion
+	err = json.Unmarshal([]byte(wsStr), &ws)
+	if err != nil {
+		return utils.ErrorNull(c, "获取用户登录标识失败")
+	}
+	var user *mini.WxUserInfo
+	if userinfo != "" {
+		json.Unmarshal([]byte(userinfo), &user)
+	}
+	acc := GetAccountByMobile("mobile")
+	auth, _ := GetAccountAuth(ws.Unionid, enum.WECHAT)
+	if auth != nil && auth["account_id"] != acc["id"] {
+		return utils.ErrorNull(c, "已绑定过其他账号，请取消绑定后进行绑定")
+	}
+	if acc == nil {
+		//注册流程
+		if password == "" {
+			return utils.ErrorNull(c, "登陆密码不能为空")
+		}
+		if len(password) > 16 {
+			return utils.ErrorNull(c, "登陆密码最长不能超过16位")
+		}
+		if !utils.CheckRegexp(password, "^[0-9a-z]{6,16}$") {
+			return utils.ErrorNull(c, "登陆密码仅包含字母数字字符")
+		}
+		id := utils.ID()
+		sql := "INSERT INTO account (id,mobile,password,salt,status,ct_time,ct_ip) VALUES (?,?,?,?,?,?,?,?)"
+		_, err := global.DB.Insert(sql, id, mobile, encrypt.Sha1Encode(password+smsCode), smsCode, enum.NORMAL,
+			time.Now().Format("2006-01-02 15:04:05"), c.RealIP())
+		if err != nil {
+			return utils.Error(c, "注册失败，"+err.Error(), nil)
+		}
+		//记录注册日志
+		go func() {
+			global.DB.InsertMap("account_action_logs", utils.ActionLogs(c, enum.ACTION_REGISTER, id))
+		}()
+
+		auth["account_id"] = id
+		auth["ct_time"] = utils.CurrentTime()
+
+	} else {
+		//绑定流程
+		if convert.ToString(acc["status"]) != enum.NORMAL {
+			return utils.ErrorNull(c, "账号已被冻结无法绑定")
+		}
+	}
+	auth["ip"] = c.RealIP()
+	auth["mini_openid"] = ws.Openid
+	auth["unionID"] = ws.Unionid
+	auth["ut_time"] = utils.CurrentTime()
+	if user != nil {
+		auth["nickname"] = user.NickName
+		auth["photo"] = user.AvatarUrl
+		auth["type"] = enum.WECHAT
+	}
+	global.RD.DelKey(mobile + "_sms_code")
+	_, err = global.DB.InsertMap("account_auths", auth)
+	if err != nil {
+		return utils.ErrorNull(c, "绑定账号失败")
+	}
+	return utils.SuccessNull(c, "绑定成功")
+}
+
+func CheckMiniAppSessionId(c echo.Context) error {
+	miniAppSessionId := c.FormValue("miniAppSessionId")
+	wsStr, err := global.RD.GetString(miniAppSessionId)
+	if err != nil {
+		return utils.ErrorNull(c, "获取用户登录标识失败")
+	}
+	if wsStr == "" {
+		return utils.ErrorNull(c, "获取用户登录标识失败")
+	}
+	return utils.SuccessNull(c, "获取用户登录标识成功")
 }
