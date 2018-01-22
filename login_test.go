@@ -70,7 +70,7 @@ func TestBindOrRegisterWechatMiniApi(t *testing.T) {
 func TestGetWechatMiniUnionID(t *testing.T) {
 	e := echo.New()
 	f := url.Values{}
-	f.Set("code", "013djHpA0ZqHRe2c0rrA0amIpA0djHpx")
+	f.Set("code", "003AFO9I1jNj680Vw06I1JeG9I1AFO9N")
 	req := httptest.NewRequest(echo.POST, "/", strings.NewReader(f.Encode()))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
 	rec := httptest.NewRecorder()

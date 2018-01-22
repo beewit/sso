@@ -1,11 +1,11 @@
 package handler
 
 import (
-	"strconv"
-	"github.com/labstack/echo"
-	"github.com/beewit/sso/global"
 	"github.com/beewit/beekit/utils"
+	"github.com/beewit/sso/global"
+	"github.com/labstack/echo"
 	"net/http"
+	"strconv"
 )
 
 func ImgCode(c echo.Context) error {
@@ -17,6 +17,10 @@ func ImgCode(c echo.Context) error {
 		d[v] %= 10
 		code += strconv.FormatInt(int64(d[v]), 32)
 	}
+	miniAppSessionId := c.FormValue("miniAppSessionId")
+
+	global.RD.SetAndExpire(miniAppSessionId+"_img_code", code, global.IMG_CODE_EXPIRE)
+
 	global.Session(c).AddValue(global.IMG_CODE, code).Saves()
 	c.Set("Content-Type", "image/png")
 	c.Response().WriteHeader(http.StatusOK)

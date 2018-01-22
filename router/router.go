@@ -41,9 +41,11 @@ func Start() {
 	e.POST("/union/cancel", handler.CancelUnion, handler.Filter)
 	e.GET("/img/code", handler.ImgCode)
 
-	e.GET("/union/mini/app/login", handler.WechatMiniUnionIDLogin)
-	e.GET("/union/mini/app/bind", handler.BindOrRegisterWechatMiniApi)
-	e.GET("/union/mini/app/check/session", handler.CheckMiniAppSessionId)
+	e.POST("/union/mini/app/login", handler.WechatMiniUnionIDLogin)
+	e.POST("/union/mini/app/bind", handler.BindOrRegisterWechatMiniApi)
+	e.POST("/union/mini/app/check/session", handler.CheckMiniAppSessionId)
+
+	e.POST("/union/mini/app/userinfo/save", handler.SaveWechatUserInfo)
 
 	utils.Open(global.Host)
 	port := ":" + convert.ToString(global.Port)

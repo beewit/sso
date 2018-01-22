@@ -1,13 +1,16 @@
 package handler
 
 import (
-	"io/ioutil"
 	"encoding/json"
-	"github.com/beewit/beekit/utils/convert"
-	"github.com/labstack/echo"
-	"github.com/beewit/hive/global"
+	"errors"
 	"github.com/beewit/beekit/utils"
+	"github.com/beewit/beekit/utils/convert"
 	"github.com/beewit/beekit/utils/enum"
+	"github.com/beewit/hive/global"
+	"github.com/beewit/wechat/mini"
+	"github.com/labstack/echo"
+	"io/ioutil"
+	"strings"
 )
 
 func readBody(c echo.Context) (map[string]string, error) {
@@ -80,4 +83,21 @@ func GetAccount(c echo.Context) (acc *global.Account, err error) {
 		return
 	}
 	return
+}
+
+func GetMiniAppSession(c echo.Context) (*mini.WxSesstion, error) {
+	miniAppSessionId := strings.TrimSpace(c.FormValue("miniAppSessionId"))
+	if miniAppSessionId == "" {
+		return nil, errors.New("未识别到用户标识")
+	}
+	wsStr, err := global.RD.GetString(miniAppSessionId)
+	if err != nil {
+		return nil, errors.New("未识别到用户标识")
+	}
+	var ws *mini.WxSesstion
+	err = json.Unmarshal([]byte(wsStr), &ws)
+	if err != nil {
+		return nil, errors.New("获取用户登录标识失败")
+	}
+	return ws, nil
 }
