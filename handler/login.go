@@ -495,22 +495,33 @@ func BindOrRegisterWechatMiniApi(c echo.Context) error {
 		return utils.AuthFailNull(c)
 	}
 	acc := GetAccountByMobile(mobile)
+
+	//判断微信号是否绑定过
 	auth, _ := GetAccountAuth(ws.Unionid, enum.WECHAT)
-	if auth != nil && auth["account_id"] != acc["id"] {
+	if auth != nil {
 		return utils.ErrorNull(c, "已绑定过其他账号，请取消绑定后进行绑定")
 	}
+
+	if acc != nil {
+		//判断手机号是否绑定过其他微信号
+		auth, _ = GetAccountAuthByAccountId(convert.MustInt64(acc["id"]), enum.WECHAT)
+		if auth != nil {
+			return utils.ErrorNull(c, "手机号已绑定其他账号")
+		}
+	}
+
 	auth = map[string]interface{}{}
 	auth["id"] = utils.ID()
+	auth["type"] = enum.WECHAT
 	wu := GetWechatUserInfo(ws.Unionid)
 	var nickname, photo, gender string
 	if wu != nil {
 		nickname = convert.ToString(wu["nickname"])
 		photo = convert.ToString(wu["avatar_url"])
 		gender = convert.ToString(wu["gender"])
-
 		auth["nickname"] = nickname
 		auth["photo"] = photo
-		auth["type"] = enum.WECHAT
+		auth["gender"] = gender
 	}
 	var accountId int64
 	if acc == nil {

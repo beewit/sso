@@ -216,6 +216,18 @@ func GetAccountAuth(unionID, t string) (row map[string]interface{}, err error) {
 	return
 }
 
+
+func GetAccountAuthByAccountId(accountId int64, t string) (row map[string]interface{}, err error) {
+	sql := `SELECT * FROM account_auths WHERE account_id=? AND type=?`
+	rows, _ := global.DB.Query(sql, accountId, t)
+	if len(rows) != 1 {
+		err = errors.New(fmt.Sprintf("您的%s没有绑定工蜂小智帐号哦", t))
+		return
+	}
+	row = rows[0]
+	return
+}
+
 func getWeibo(uid, accessToken string) (wb weibo.Weibo, err error) {
 	if uid == "" || accessToken == "" {
 		err = errors.New("微博需要的uid、AccessToken不能为空")

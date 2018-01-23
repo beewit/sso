@@ -44,7 +44,11 @@ func TestWechatLogin(t *testing.T) {
 }
 
 func TestRandStr(t *testing.T) {
-	println(handler.GetRand())
+	auth:=map[string]interface{}{}
+	auth["account_id"]=1
+	acc:=map[string]interface{}{}
+	acc["id"]=1
+	println(auth["account_id"] == acc["id"])
 }
 
 func TestBindOrRegisterWechatMiniApi(t *testing.T) {
