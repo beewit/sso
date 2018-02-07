@@ -47,6 +47,11 @@ func Start() {
 
 	e.POST("/union/mini/app/userinfo/save", handler.SaveWechatUserInfo)
 
+
+	e.POST("/union/mp/app/login", handler.WechatMPUnionIDLogin)
+	e.POST("/union/mp/app/bind", handler.BindOrRegisterWechatMPApi)
+	e.POST("/union/mp/app/check/session", handler.CheckMPSessionId)
+
 	utils.Open(global.Host)
 	port := ":" + convert.ToString(global.Port)
 	e.Logger.Fatal(e.Start(port))

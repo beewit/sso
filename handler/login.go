@@ -582,3 +582,137 @@ func CheckMiniAppSessionId(c echo.Context) error {
 	}
 	return utils.SuccessNull(c, "获取用户登录标识成功")
 }
+
+
+
+func WechatMPUnionIDLogin(c echo.Context) error {
+	ws := GetOauthUser(c)
+	if ws == nil {
+		return utils.AuthWechatFailNull(c)
+	}
+	token, err := GetAccountAuthTokenByType(c, ws.UnionId, enum.WECHAT)
+	if err != nil {
+		return utils.ErrorNull(c, err.Error())
+	}
+	userinfo, err := CheckToken(token)
+	if err != nil {
+		return utils.ErrorNull(c, "获取用户信息失败")
+	} else {
+		return utils.Success(c, "登录成功", map[string]interface{}{
+			"token":    token,
+			"userinfo": userinfo,
+		})
+	}
+}
+
+func CheckMPSessionId(c echo.Context) error {
+	mpSessionId := c.FormValue(MPSessionId)
+	wsStr, err := global.RD.GetString(mpSessionId)
+	if err != nil {
+		return utils.ErrorNull(c, "获取用户登录标识失败")
+	}
+	if wsStr == "" {
+		return utils.ErrorNull(c, "获取用户登录标识失败")
+	}
+	return utils.SuccessNull(c, "获取用户登录标识成功")
+}
+
+
+//【小程序】绑定或注册账号并登录
+func BindOrRegisterWechatMPApi(c echo.Context) error {
+	ws := GetOauthUser(c)
+	if ws == nil {
+		return utils.AuthWechatFailNull(c)
+	}
+	mobile := c.FormValue("mobile")
+	password := c.FormValue("pwd")
+	smsCode := c.FormValue("smsCode")
+	if !utils.CheckMobile(mobile) {
+		return utils.ErrorNull(c, "手机号码格式错误")
+	}
+	if smsCode == "" {
+		return utils.ErrorNull(c, "短信验证码不能为空")
+	}
+	rdSmsCode, setStrErr := global.RD.GetString(mobile + "_sms_code")
+	if setStrErr != nil {
+		global.Log.Error("注册帐号验证码Redis存储错误：" + setStrErr.Error())
+	}
+	if strings.ToLower(rdSmsCode) != strings.ToLower(smsCode) {
+		return utils.ErrorNull(c, "短信验证码错误")
+	}
+	acc := GetAccountByMobile(mobile)
+
+	//判断微信号是否绑定过
+	auth, _ := GetAccountAuth(ws.UnionId, enum.WECHAT)
+	if auth != nil {
+		return utils.ErrorNull(c, "已绑定过其他账号，请取消绑定后进行绑定")
+	}
+
+	if acc != nil {
+		//判断手机号是否绑定过其他微信号
+		auth, _ = GetAccountAuthByAccountId(convert.MustInt64(acc["id"]), enum.WECHAT)
+		if auth != nil {
+			return utils.ErrorNull(c, "手机号已绑定其他账号")
+		}
+	}
+
+	auth = map[string]interface{}{}
+	auth["id"] = utils.ID()
+	auth["type"] = enum.WECHAT
+	wu := GetWechatUserInfo(ws.UnionId)
+	var nickname, photo, gender string
+	if wu != nil {
+		nickname = convert.ToString(wu["nickname"])
+		photo = convert.ToString(wu["avatar_url"])
+		gender = convert.ToString(wu["gender"])
+		auth["nickname"] = nickname
+		auth["photo"] = photo
+		auth["gender"] = gender
+	}
+	var accountId int64
+	if acc == nil {
+		//注册流程
+		if password == "" {
+			return utils.ErrorNull(c, "登陆密码不能为空")
+		}
+		if len(password) > 16 {
+			return utils.ErrorNull(c, "登陆密码最长不能超过16位")
+		}
+		if !utils.CheckRegexp(password, "^[0-9a-z]{6,16}$") {
+			return utils.ErrorNull(c, "登陆密码仅包含字母数字字符")
+		}
+		accountId := utils.ID()
+		sql := "INSERT INTO account (id,mobile,password,salt,status,ct_time,ct_ip,nickname,photo,gender) VALUES (?,?,?,?,?,?,?,?,?,?)"
+		_, err := global.DB.Insert(sql, accountId, mobile, encrypt.Sha1Encode(password+smsCode), smsCode, enum.NORMAL,
+			time.Now().Format("2006-01-02 15:04:05"), c.RealIP(), nickname, photo, gender)
+		if err != nil {
+			return utils.Error(c, "注册失败，"+err.Error(), nil)
+		}
+		//记录注册日志
+		go func() {
+			global.DB.InsertMap("account_action_logs", utils.ActionLogs(c, enum.ACTION_REGISTER, accountId))
+		}()
+
+		auth["account_id"] = accountId
+		auth["ct_time"] = utils.CurrentTime()
+
+	} else {
+		accountId = convert.MustInt64(acc["id"])
+		auth["account_id"] = accountId
+		//绑定流程
+		if convert.ToString(acc["status"]) != enum.NORMAL {
+			return utils.ErrorNull(c, "账号已被冻结无法绑定")
+		}
+	}
+	auth["ip"] = c.RealIP()
+	auth["mini_openid"] = ws.OpenId
+	auth["unionID"] = ws.UnionId
+	auth["ut_time"] = utils.CurrentTime()
+	global.RD.DelKey(mobile + "_sms_code")
+	_, err := global.DB.InsertMap("account_auths", auth)
+	if err != nil {
+		global.Log.Error("account_auths sql error:%s", err.Error())
+		return utils.ErrorNull(c, "绑定账号失败")
+	}
+	return utils.SuccessNull(c, "绑定成功")
+}

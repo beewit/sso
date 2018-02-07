@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo"
 	"io/ioutil"
 	"strings"
+	"github.com/beewit/wechat/mp/user/oauth2"
 )
 
 func readBody(c echo.Context) (map[string]string, error) {
@@ -85,8 +86,13 @@ func GetAccount(c echo.Context) (acc *global.Account, err error) {
 	return
 }
 
+var (
+	MPSessionId      = "mpSessionId"
+	MiniAppSessionId = "miniAppSessionId"
+)
+
 func GetMiniAppSession(c echo.Context) (*mini.WxSesstion, error) {
-	miniAppSessionId := strings.TrimSpace(c.FormValue("miniAppSessionId"))
+	miniAppSessionId := strings.TrimSpace(c.FormValue(MiniAppSessionId))
 	if miniAppSessionId == "" {
 		return nil, errors.New("未识别到用户标识")
 	}
@@ -100,4 +106,24 @@ func GetMiniAppSession(c echo.Context) (*mini.WxSesstion, error) {
 		return nil, errors.New("获取用户登录标识失败")
 	}
 	return ws, nil
+}
+
+func GetOauthUser(c echo.Context) *oauth2.UserInfo {
+	mpSessionId := strings.TrimSpace(c.FormValue(MPSessionId))
+	if mpSessionId == "" {
+		return nil
+	}
+	global.Log.Info("mpSessionId：" + mpSessionId)
+	us, err := global.RD.GetString(mpSessionId)
+	if err != nil {
+		return nil
+	}
+	global.Log.Info("user:" + us)
+	var u *oauth2.UserInfo
+	err = json.Unmarshal([]byte(us), &u)
+	if err != nil {
+		global.Log.Error("json.Unmarshal wechat userinfo error:%s", err.Error())
+		return nil
+	}
+	return u
 }
