@@ -231,6 +231,7 @@ func RegSendSms(c echo.Context) error {
 			}
 			return utils.Success(c, "短信发送成功", nil)
 		} else {
+			global.Log.Error("短信发送失败 json 详情："+convert.ToObjStr(result))
 			return utils.Error(c, "短信发送失败", nil)
 		}
 	}
