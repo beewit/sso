@@ -59,7 +59,7 @@ func Filter(next echo.HandlerFunc) echo.HandlerFunc {
 			global.Log.Error(accMapStr + "，error：" + err.Error())
 			return utils.AuthFail(c, "登陆信息已失效，请重新登陆")
 		}
-		m, err := global.DB.Query("SELECT id,nickname,photo,mobile,status FROM account WHERE id=? LIMIT 1", accMap["id"])
+		m, err := global.DB.Query("SELECT id,nickname,photo,mobile,status,org_id FROM account WHERE id=? LIMIT 1", accMap["id"])
 		if err != nil {
 			return utils.AuthFail(c, "获取用户信息失败")
 		}

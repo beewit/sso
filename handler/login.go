@@ -22,7 +22,7 @@ func Login(c echo.Context) error {
 	mobile := c.FormValue("mobile")
 	password := c.FormValue("password")
 	// auth
-	sql := `SELECT id, password, mobile, nickname,salt FROM account WHERE mobile = ? AND status = ?`
+	sql := `SELECT id, password, mobile, nickname,salt,org_id FROM account WHERE mobile = ? AND status = ?`
 	rows, _ := global.DB.Query(sql, mobile, enum.NORMAL)
 	if len(rows) != 1 {
 		return utils.Error(c, "帐号或密码不存在", nil)
